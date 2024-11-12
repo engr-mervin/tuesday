@@ -5,7 +5,7 @@ import { QueryLevel } from "monstaa/dist/types/types.js";
 import { CAMPAIGN_NAME_REGEX } from "./constants/REGEXES.js";
 import { COLUMN_GROUP, FRIENDLY_FIELD_NAMES, ROUND_TYPES, } from "./constants/INFRA.js";
 import { addDays, getToday } from "./helpers/dateFunctions.js";
-import { getCIDFromInfraMapping, getItemsFromInfraMapping, } from "./helpers/infraFunctions.js";
+import { getItemsFromInfraMapping, } from "./helpers/infraFunctions.js";
 import { ConfigError } from "./errors/configError.js";
 import { isInteger } from "./helpers/validatorFunctions.js";
 const fastify = Fastify({
@@ -26,7 +26,7 @@ fastify.post("/import-campaign", async function handler(request, reply) {
     }
     reply.code(200).send({ status: "ok" });
 });
-async function processThemeBoard(themeBID, groupName) {
+async function getThemeGroup(themeBID, groupName) {
     const themeGroups = await mondayClient.getBoard(themeBID, {
         queryLevel: QueryLevel.Group,
     });
@@ -43,7 +43,7 @@ async function processThemeBoard(themeBID, groupName) {
     });
     return themeGroup;
 }
-async function processOfferBoard(offerBID, groupName) {
+async function getOfferGroup(offerBID, groupName) {
     const offerGroups = await mondayClient.getBoard(offerBID, {
         queryLevel: QueryLevel.Group,
     });
@@ -60,78 +60,115 @@ async function processOfferBoard(offerBID, groupName) {
     });
     return offerGroup;
 }
-function validateRoundItem(roundItem, infraCIDMapping, infraItemMapping) {
-    if (!roundItem.cells) {
-        throw new Error(`Round cells not initialized.`);
+function validateRoundItem(roundFields, infraFFNtoCID) {
+    try {
+        const errors = [];
+        if (!roundFields.roundType ||
+            !Object.values(ROUND_TYPES).includes(roundFields.roundType)) {
+            errors.push(`Round type is missing.`);
+        }
+        if (roundFields.startDate === undefined) {
+            throw new ConfigError("Round Start Date", "MISSING");
+        }
+        if (!roundFields.startDate) {
+            errors.push(`Round start date is missing.`);
+        }
+        // Validate start date and end date based on is one time
+        // if (roundFields.startDate && roundFields.endDate){
+        //   const start = new Date(roundFields.startDate);
+        //   const end = new Date(roundFields.endDate);
+        //   if(start > end){
+        //     errors.push(`Round end date`)
+        //   }
+        // }
+        //End round date can be null if is one time is checked, this will be in inter-campaign & round-validation
+        //No need to validate omg,sms,push,email hours because Monday field will always return a valid value
+        return errors.length
+            ? {
+                status: "error",
+                errors,
+            }
+            : {
+                status: "success",
+            };
     }
-    const errors = [];
-    const roundTypeCID = getCIDFromInfraMapping(infraItemMapping, (item) => {
-        return (item.cells[process.env.INFRA_CONFIG_FFN_CID].value ===
-            FRIENDLY_FIELD_NAMES.Round_Type &&
-            item.cells[process.env.INFRA_CONFIG_COLUMN_GROUP_CID].value ===
-                COLUMN_GROUP.Round);
-    });
-    if (!roundTypeCID) {
-        //
-        throw new ConfigError("Round Type", "MISSING");
+    catch (err) {
+        return {
+            status: "fail",
+            message: err.message,
+        };
     }
-    const roundType = roundItem.cells[roundTypeCID].value;
-    if (!roundType || !Object.values(ROUND_TYPES).includes(roundType)) {
-        errors.push(`Round type is missing.`);
-    }
-    const roundStartDateCID = getCIDFromInfraMapping(infraItemMapping, (item) => {
-        return (item.cells[process.env.INFRA_CONFIG_FFN_CID].value ===
-            FRIENDLY_FIELD_NAMES.Round_Start_Date &&
-            item.cells[process.env.INFRA_CONFIG_COLUMN_GROUP_CID].value ===
-                COLUMN_GROUP.Round);
-    });
-    if (!roundStartDateCID) {
-        //
-        throw new ConfigError("Round Start Date", "MISSING");
-    }
-    const roundStartDate = roundItem.cells[roundStartDateCID].value;
-    if (!roundStartDate) {
-        errors.push(`Round start date is missing.`);
-    }
-    //End round date can be null if is one time is checked, this will be in inter-validation
-    const roundEndDateCID = getCIDFromInfraMapping(infraItemMapping, (item) => {
-        return (item.cells[process.env.INFRA_CONFIG_FFN_CID].value ===
-            FRIENDLY_FIELD_NAMES.Round_End_Date &&
-            item.cells[process.env.INFRA_CONFIG_COLUMN_GROUP_CID].value ===
-                COLUMN_GROUP.Round);
-    });
-    if (!roundEndDateCID) {
-        //
-        throw new ConfigError("Round End Date", "MISSING");
-    }
-    const roundEndDate = roundItem.cells[roundEndDateCID].value;
-    if (!roundEndDate) {
-        errors.push(`Round end date is missing.`);
-    }
-    //No need to validate because Monday field will always return a valid value
-    const emailHourCID = getCIDFromInfraMapping(infraItemMapping, (item) => {
-        return (item.cells[process.env.INFRA_CONFIG_FFN_CID].value ===
-            FRIENDLY_FIELD_NAMES.Email_Hour &&
-            item.cells[process.env.INFRA_CONFIG_COLUMN_GROUP_CID].value ===
-                COLUMN_GROUP.Round);
-    });
-    const emailHour = emailHourCID ? roundItem.cells[emailHourCID] : null;
 }
-function getCampaignFields(campaignItem, infraColumnGroupCIDMapping, infraMapping) {
-    if (!campaignItem.cells) {
-        throw new Error(`Campaign item is missing.`);
+function getRoundFields(roundItem, infraFFNtoCID, infraMapping) {
+    if (!roundItem.cells) {
+        throw new Error(`Round item is not initialized.`);
     }
-    const dateRangeCID = infraColumnGroupCIDMapping[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Date_Range];
+    const roundTypeCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Type];
+    const roundType = roundTypeCID
+        ? roundItem.cells[roundTypeCID].value
+        : undefined;
+    const startDateCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const startDate = startDateCID
+        ? roundItem.cells[startDateCID].value
+        : undefined;
+    const endDateCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const endDate = endDateCID
+        ? roundItem.cells[endDateCID].value
+        : undefined;
+    const emailScheduleHourCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const emailScheduleHour = emailScheduleHourCID
+        ? roundItem.cells[emailScheduleHourCID].value
+        : undefined;
+    const SMSScheduleHourCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const SMSScheduleHour = SMSScheduleHourCID
+        ? roundItem.cells[SMSScheduleHourCID].value
+        : undefined;
+    const OMGScheduleHourCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const OMGScheduleHour = OMGScheduleHourCID
+        ? roundItem.cells[OMGScheduleHourCID].value
+        : undefined;
+    const pushScheduleHourCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const pushScheduleHour = pushScheduleHourCID
+        ? roundItem.cells[pushScheduleHourCID].value
+        : undefined;
+    const isOneTimeCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
+    const isOneTime = isOneTimeCID
+        ? roundItem.cells[isOneTimeCID].value
+        : undefined;
+    const tysonRoundCID = infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
+    const tysonRound = tysonRoundCID
+        ? roundItem.cells[tysonRoundCID].value
+        : undefined;
+    //Validate undefined values
+    return {
+        name: roundItem.name,
+        roundType,
+        startDate,
+        endDate,
+        emailScheduleHour,
+        SMSScheduleHour,
+        OMGScheduleHour,
+        pushScheduleHour,
+        isOneTime,
+        tysonRound,
+    };
+    //End round date can be null if is one time is checked, this will be in inter-validation
+}
+function getCampaignFields(campaignItem, infraFFNtoCID, infraMapping) {
+    if (!campaignItem.cells) {
+        throw new Error(`Campaign item is not initialized.`);
+    }
+    const dateRangeCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Date_Range];
     const [startDate, endDate] = dateRangeCID
         ? campaignItem.cells[dateRangeCID].value
         : [undefined, undefined];
-    const abCID = infraColumnGroupCIDMapping[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.AB];
+    const abCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.AB];
     const ab = abCID ? campaignItem.cells[abCID].value : undefined;
-    const tiersCID = infraColumnGroupCIDMapping[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
+    const tiersCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
     const tiers = tiersCID
         ? campaignItem.cells[tiersCID].value
         : undefined;
-    const controlGroupCID = infraColumnGroupCIDMapping[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Control_Group];
+    const controlGroupCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Control_Group];
     const controlGroup = tiersCID
         ? campaignItem.cells[controlGroupCID].value
         : undefined;
@@ -139,7 +176,7 @@ function getCampaignFields(campaignItem, infraColumnGroupCIDMapping, infraMappin
         return (item.cells[process.env.INFRA_CONFIG_COLUMN_GROUP_CID].value ===
             COLUMN_GROUP.Market);
     });
-    const allMarketsCID = infraColumnGroupCIDMapping[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
+    const allMarketsCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
     const regulations = {};
     for (let i = 0; i < allRegulations.length; i++) {
         const regulation = allRegulations[i];
@@ -150,6 +187,23 @@ function getCampaignFields(campaignItem, infraColumnGroupCIDMapping, infraMappin
             campaignItem.cells[regulationCID].value);
         regulations[regulationName] = isRegulationChecked;
     }
+    const statusCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Status];
+    const status = statusCID
+        ? campaignItem.cells[statusCID].value
+        : undefined;
+    const personCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Person];
+    const personId = personCID
+        ? campaignItem.cells[personCID].rawValue
+            .personsAndTeams[0].id
+        : undefined;
+    const themeCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Theme];
+    const theme = themeCID
+        ? campaignItem.cells[themeCID].value
+        : undefined;
+    const offerCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Offer];
+    const offer = offerCID
+        ? campaignItem.cells[offerCID].value
+        : undefined;
     return {
         name: campaignItem.name,
         startDate,
@@ -158,9 +212,13 @@ function getCampaignFields(campaignItem, infraColumnGroupCIDMapping, infraMappin
         tiers,
         controlGroup,
         regulations,
+        status,
+        personId,
+        theme,
+        offer,
     };
 }
-function validateCampaignItem(campaignFields, infraColumnGroupCIDMapping) {
+function validateCampaignItem(campaignFields, infraFFNtoCID) {
     try {
         const errors = [];
         if (!campaignFields.name) {
@@ -199,44 +257,8 @@ function validateCampaignItem(campaignFields, infraColumnGroupCIDMapping) {
         //The basis for requiring tiers in a campaign is the
         //existence of tiersCID record in the infra item...
         //TODO: Not validation layer check!
-        // const marketTiersList: { name: string; isChecked: boolean }[] = [];
-        // let tiersList: string[] = [];
-        // if (tiersCID) {
-        //   //MONSTA: TODO: Move json.parse to cell class itself
-        //   const tiersValue = campaignItem.cells[tiersCID].value;
-        //   if (typeof tiersValue !== "string") {
-        //     throw new ConfigError("Tiers", "INVALID");
-        //   }
-        //   //For verification, do we have boards where tiers are not required?
-        //   tiersList = tiersValue.split(",");
-        // }
-        // const isABCID = infraCIDMapping[FRIENDLY_FIELD_NAMES.isAB]
-        // const isAB = campaignItem.cells[isABCID].value as number | null;
-        // //TODO: Monsta, better type inference
-        // for (let i = 0; i < allRegulations.length; i++) {
-        //   const regulation = allRegulations[i];
-        //   const regulationName =
-        //     regulation.cells![process.env.INFRA_CONFIG_FFN_CID!].value as string;
-        //   const regulationCID = regulation.cells![process.env.INFRA_CONFIG_COLUMN_GROUP_CID!].value as string;
-        //   const isRegulationChecked =
-        //     Boolean(campaignItem.cells[allMarketsCID] ||
-        //     campaignItem.cells![regulationCID].value);
-        //   for (let j = 0; j < tiersList.length; j++) {
-        //     const tier = tiersList[j];
-        //     marketTiersList.push({
-        //       name: `${regulationName} ${tier}`,
-        //       isChecked: isRegulationChecked,
-        //     })
-        //     if(isAB !== null){
-        //       marketTiersList.push({
-        //         name: `${regulationName} ${tier}_B`,
-        //         isChecked: isRegulationChecked,
-        //       })
-        //     }
-        //   }
-        // }
         //Optional
-        if (campaignFields.tiers) {
+        if (campaignFields.tiers !== undefined) {
             if (typeof campaignFields.tiers !== "string") {
                 throw new ConfigError("Tiers", "INVALID");
             }
@@ -245,14 +267,15 @@ function validateCampaignItem(campaignFields, infraColumnGroupCIDMapping) {
                 errors.push(`Campaign is missing tiers.`);
             }
         }
-        if (campaignFields.ab) {
-            if (isNaN(campaignFields.ab) ||
+        if (campaignFields.ab !== undefined) {
+            if (campaignFields.ab === null ||
+                isNaN(campaignFields.ab) ||
                 campaignFields.ab > 90 ||
                 campaignFields.ab < 10) {
                 errors.push(`Campaign's A/B value must be between 10-90 (inclusive).`);
             }
         }
-        if (campaignFields.controlGroup) {
+        if (campaignFields.controlGroup !== undefined) {
             //Allow 10-90 and also empty value (0)
             if (!isInteger(campaignFields.controlGroup) ||
                 (campaignFields.controlGroup !== 0 &&
@@ -277,17 +300,87 @@ function validateCampaignItem(campaignFields, infraColumnGroupCIDMapping) {
         };
     }
 }
-async function processConfigBoard(configBID, groupName) { }
-async function processCampaignItem(campaignItem, infraColumnGroupCIDMapping, infraMapping) {
-    const campaignFields = getCampaignFields(campaignItem, infraColumnGroupCIDMapping, infraMapping);
-    const validationResult = validateCampaignItem(campaignFields, infraColumnGroupCIDMapping);
-    if (validationResult.status === "fail") {
-        //generate report here
-        return;
+async function getConfigGroup(configBID, groupName) {
+    const configGroups = await mondayClient.getBoard(configBID, {
+        queryLevel: QueryLevel.Group,
+    });
+    if (groupName === "Choose Offer") {
+        throw new Error(`Offer field is empty.`);
     }
-    for (let i = 0; i < campaignItem.subitems.length; i++) {
-        const roundItem = campaignItem.subitems[i];
-        validateRoundItem(roundItem, infraCIDMapping, infraItemMapping);
+    const configGroup = configGroups.groups?.find((group) => group.title === groupName);
+    if (!configGroup) {
+        throw new Error(`Group name ${groupName} is not found in Board:${configBID}.`);
+    }
+    await configGroup.update({
+        queryLevel: QueryLevel.Cell,
+        subitemLevel: "none",
+    });
+    return configGroup;
+}
+function processRoundItems(roundItems, infraFFNtoCID, infraMapping) {
+    try {
+        const roundErrors = {};
+        const roundFieldsObj = {};
+        if (roundItems === undefined) {
+            throw new Error(`Round items missing.`);
+        }
+        for (let i = 0; i < roundItems.length; i++) {
+            const roundItem = roundItems[i];
+            const roundFields = getRoundFields(roundItem, infraFFNtoCID, infraMapping);
+            const result = validateRoundItem(roundFields, infraFFNtoCID);
+            if (result.status === "fail") {
+                return result;
+            }
+            else if (result.status === "error") {
+                roundErrors[roundItem.name] = result.errors;
+            }
+            else {
+                roundFieldsObj[roundItem.name] = roundFields;
+            }
+        }
+        return Object.keys(roundErrors).length
+            ? {
+                status: "error",
+                errors: roundErrors,
+            }
+            : {
+                status: "success",
+                result: roundFieldsObj,
+            };
+    }
+    catch (err) {
+        return {
+            status: "fail",
+            message: err.message,
+        };
+    }
+}
+function processCampaignItem(campaignItem, infraFFNtoCID, infraMapping) {
+    try {
+        const campaignFields = getCampaignFields(campaignItem, infraFFNtoCID, infraMapping);
+        const validationResult = validateCampaignItem(campaignFields, infraFFNtoCID);
+        let campaignErrors = [];
+        if (validationResult.status === "fail") {
+            return validationResult;
+        }
+        else if (validationResult.status === "error") {
+            campaignErrors = validationResult.errors;
+        }
+        return campaignErrors.length
+            ? {
+                status: "error",
+                errors: campaignErrors,
+            }
+            : {
+                status: "success",
+                result: campaignFields,
+            };
+    }
+    catch (err) {
+        return {
+            status: "fail",
+            message: err.message,
+        };
     }
     //VALIDATION LAYER
 }
@@ -318,32 +411,45 @@ async function importCampaign(webhook) {
     if (!infraItem) {
         throw new Error(`Infra item not found.`);
     }
+    if (!infraItem.cells) {
+        throw new Error(`Infra items not initialized.`);
+    }
     await infraItem.update({
         queryLevel: QueryLevel.Cell,
         subitemLevel: QueryLevel.Cell,
     });
-    const infraColumnGroupCIDMapping = {};
+    const infraFFNtoCID = {};
     const infraMapping = {};
     infraItem?.subitems?.forEach((subitem) => {
         const FFN = subitem.cells[friendlyFieldNameCID];
         const columnGroup = subitem.cells[columnGroupCID];
         infraMapping[String(FFN.value)] = subitem;
-        infraColumnGroupCIDMapping[String(columnGroup)] =
-            infraColumnGroupCIDMapping[String(columnGroup.value)] || {};
-        infraColumnGroupCIDMapping[String(columnGroup)][String(FFN.value)] = String(subitem.cells[String(columnIDCID)].value);
+        infraFFNtoCID[String(columnGroup)] =
+            infraFFNtoCID[String(columnGroup.value)] || {};
+        infraFFNtoCID[String(columnGroup)][String(FFN.value)] = String(subitem.cells[String(columnIDCID)].value);
     });
-    const campaignDetails = await processCampaignItem(campaignItem, infraColumnGroupCIDMapping, infraMapping);
+    const campaignDetails = processCampaignItem(campaignItem, infraFFNtoCID, infraMapping);
+    if (campaignDetails.status === "error") {
+        //generate report
+        return;
+    }
+    else if (campaignDetails.status === "fail") {
+        //error handling here
+        return;
+    }
+    const roundDetails = processRoundItems(campaignItem.subitems, infraFFNtoCID, infraMapping);
     //GET theme board id, offer board id, etc...
-    const themeBID = infraItem?.cells[process.env.INFRA_THEME_BOARD_ID_CID].value;
-    const offerBID = infraItem?.cells[process.env.INFRA_OFFER_BOARD_ID_CID].value;
-    const configBID = infraItem?.cells[process.env.INFRA_CONFIG_BOARD_ID_CID].value;
-    //We will build a mapping like FFN value: Item in infra && FFN value: column id
-    const themeName = campaignItem.cells[infraCIDMapping[FRIENDLY_FIELD_NAMES.Theme]].value;
-    const offerName = campaignItem.cells[infraCIDMapping[FRIENDLY_FIELD_NAMES.Offer]].value;
-    //Can be ran in parallel
-    const themeDetails = await processThemeBoard(themeBID, themeName);
-    const offerDetails = await processOfferBoard(offerBID, offerName);
-    const configDetails = await processConfigBoard(configBID, offerName);
+    const themeBID = infraItem.cells[process.env.INFRA_THEME_BOARD_ID_CID].value;
+    const offerBID = infraItem.cells[process.env.INFRA_OFFER_BOARD_ID_CID].value;
+    const configBID = infraItem.cells[process.env.INFRA_CONFIG_BOARD_ID_CID].value;
+    const themeName = campaignDetails.result.theme;
+    const offerName = campaignDetails.result.offer;
+    //TODO: Run in parallel
+    //TODO: Add getuser in monsta
+    //TODO: Query injection instead of multiple cases
+    const themeGroup = await getThemeGroup(themeBID, themeName);
+    const offerDetails = await getOfferGroup(offerBID, offerName);
+    const configDetails = await getConfigGroup(configBID, offerName);
 }
 // Run the server!
 try {
