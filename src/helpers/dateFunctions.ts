@@ -1,5 +1,5 @@
 export function addDays(date: string | Date, increment: number): Date {
-  let inputDate = date instanceof Date ? date : new Date(date);
+  let inputDate = date instanceof Date ? new Date(date.getTime()) : new Date(date);
   if (isNaN(inputDate.getTime())) {
     return inputDate;
   }

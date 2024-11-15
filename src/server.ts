@@ -8,9 +8,12 @@ import { Group } from "monstaa/dist/classes/Group.js";
 import { CAMPAIGN_NAME_REGEX } from "./constants/REGEXES.js";
 import {
   CAMPAIGN_STATUSES,
-  COLUMN_GROUP,
+  PARAMETER_LEVEL,
   FRIENDLY_FIELD_NAMES,
   ROUND_TYPES,
+  COLUMN_GROUP,
+  CONFIGURATION_TYPES,
+  CONFIGURATION_COLUMN_NAMES,
 } from "./constants/INFRA.js";
 import { addDays, getToday } from "./helpers/dateFunctions.js";
 import {
@@ -133,6 +136,7 @@ function validateRoundItem(
       errors.push(`Round type is missing.`);
     }
 
+    //TODO: Move to getRoundFields, all config error should be in get function
     if (roundFields.startDate === undefined) {
       throw new ConfigError("Round Start Date", "MISSING");
     }
@@ -201,70 +205,73 @@ interface RoundFields {
 
 function getRoundFields(
   roundItem: Item,
-  infraFFNtoCID: Record<string, Record<string, string>>,
-  infraMapping: Record<string, Item>
+  infraFFNtoCID: Record<string, Record<string, string>>
 ): RoundFields {
   if (!roundItem.cells) {
     throw new Error(`Round item is not initialized.`);
   }
 
   const roundTypeCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Type];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Type];
   const roundType = roundTypeCID
     ? (roundItem.cells[roundTypeCID].value as string)
     : undefined;
 
   const startDateCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
   const startDate = startDateCID
     ? (roundItem.cells[startDateCID].value as string)
     : undefined;
 
   const endDateCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
   const endDate = endDateCID
     ? (roundItem.cells[endDateCID].value as string)
     : undefined;
 
   const emailScheduleHourCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
   const emailScheduleHour = emailScheduleHourCID
     ? (roundItem.cells[emailScheduleHourCID].value as string)
     : undefined;
 
   const SMSScheduleHourCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
   const SMSScheduleHour = SMSScheduleHourCID
     ? (roundItem.cells[SMSScheduleHourCID].value as string)
     : undefined;
 
   const OMGScheduleHourCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
   const OMGScheduleHour = OMGScheduleHourCID
     ? (roundItem.cells[OMGScheduleHourCID].value as string)
     : undefined;
 
   const pushScheduleHourCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
   const pushScheduleHour = pushScheduleHourCID
     ? (roundItem.cells[pushScheduleHourCID].value as string)
     : undefined;
 
   const isOneTimeCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][
+      FRIENDLY_FIELD_NAMES.Is_One_Time_Round
+    ];
 
   const isOneTime = isOneTimeCID
     ? (roundItem.cells[isOneTimeCID].value as boolean)
     : undefined;
 
   const tysonRoundCID =
-    infraFFNtoCID[COLUMN_GROUP.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
+    infraFFNtoCID[PARAMETER_LEVEL.Round][
+      FRIENDLY_FIELD_NAMES.Is_One_Time_Round
+    ];
 
   const tysonRound = tysonRoundCID
     ? (roundItem.cells[tysonRoundCID].value as number)
@@ -290,14 +297,14 @@ function getRoundFields(
 function getCampaignFields(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
-  infraMapping: Record<string, Item>
+  infraMapping: Record<string, Record<string, Item>>
 ): CampaignFields {
   if (!campaignItem.cells) {
     throw new Error(`Campaign item is not initialized.`);
   }
 
   const dateRangeCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Campaign_Date_Range
     ];
 
@@ -305,18 +312,19 @@ function getCampaignFields(
     ? (campaignItem.cells[dateRangeCID].value as [string, string])
     : [undefined, undefined];
 
-  const abCID = infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.AB];
+  const abCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.AB];
   const ab = abCID ? (campaignItem.cells[abCID].value as number) : undefined;
 
   const tiersCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
   const tiers = tiersCID
     ? (campaignItem.cells[tiersCID].value as string)
     : undefined;
 
   const controlGroupCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Control_Group];
-  const controlGroup = tiersCID
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Control_Group];
+  const controlGroup = controlGroupCID
     ? (campaignItem.cells[controlGroupCID].value as number)
     : undefined;
 
@@ -328,7 +336,7 @@ function getCampaignFields(
   });
 
   const allMarketsCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
 
   const regulations: Record<string, boolean> = {};
   for (let i = 0; i < allRegulations.length; i++) {
@@ -337,11 +345,11 @@ function getCampaignFields(
       .value as string;
 
     const regulationCID = regulation.cells![
-      process.env.INFRA_CONFIG_COLUMN_GROUP_CID!
+      process.env.INFRA_CONFIG_COLUMN_ID_CID!
     ].value as string;
 
     const isRegulationChecked = Boolean(
-      campaignItem.cells[allMarketsCID] ||
+      campaignItem.cells[allMarketsCID].value ||
         campaignItem.cells![regulationCID].value
     );
 
@@ -349,14 +357,16 @@ function getCampaignFields(
   }
 
   const statusCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Status];
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][
+      FRIENDLY_FIELD_NAMES.Campaign_Status
+    ];
 
   const status = statusCID
     ? (campaignItem.cells[statusCID].value as string)
     : undefined;
 
   const personCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Person];
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Person];
 
   const personId = personCID
     ? ((campaignItem.cells[personCID].rawValue as Record<string, any>)
@@ -364,14 +374,14 @@ function getCampaignFields(
     : undefined;
 
   const themeCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Theme];
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Theme];
 
   const theme = themeCID
     ? (campaignItem.cells[themeCID].value as string)
     : undefined;
 
   const offerCID =
-    infraFFNtoCID[COLUMN_GROUP.Campaign][FRIENDLY_FIELD_NAMES.Offer];
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Offer];
 
   const offer = offerCID
     ? (campaignItem.cells[offerCID].value as string)
@@ -393,8 +403,7 @@ function getCampaignFields(
 }
 
 function validateCampaignItem(
-  campaignFields: CampaignFields,
-  infraFFNtoCID: Record<string, Record<string, string>>
+  campaignFields: CampaignFields
 ): ValidationResult {
   try {
     const errors = [];
@@ -435,6 +444,13 @@ function validateCampaignItem(
     //TODO: FOR DESIGN ERROR HANDLING
     if (Object.keys(campaignFields.regulations).length === 0) {
       errors.push(`Campaign must have a regulation.`);
+    }
+
+    if (
+      Object.values(campaignFields.regulations).filter((isChecked) => isChecked)
+        .length === 0
+    ) {
+      errors.push(`Campaign has no chosen regulation.`);
     }
 
     //TODO: Move envs in a module with type safety
@@ -496,6 +512,48 @@ function validateCampaignItem(
   }
 }
 
+function validateThemeItems(
+  themeItems: Record<string, ThemeParameter>
+): ValidationResult<undefined, Record<string, string[]>> {
+  try {
+    const themeErrors: Record<string, string[]> = {};
+    return Object.keys(themeErrors).length
+      ? {
+          status: "error",
+          errors: themeErrors,
+        }
+      : {
+          status: "success",
+        };
+  } catch (err) {
+    return {
+      status: "fail",
+      message: (err as Error).message,
+    };
+  }
+}
+
+function validateOfferItems(
+  themeItems: Record<string, OfferParameter>
+): ValidationResult<undefined, Record<string, string[]>> {
+  try {
+    const offerErrors: Record<string, string[]> = {};
+    return Object.keys(offerErrors).length
+      ? {
+          status: "error",
+          errors: offerErrors,
+        }
+      : {
+          status: "success",
+        };
+  } catch (err) {
+    return {
+      status: "fail",
+      message: (err as Error).message,
+    };
+  }
+}
+
 async function getConfigGroup(configBID: string, groupName: string) {
   const configGroups = await mondayClient.getBoard(configBID, {
     queryLevel: QueryLevel.Group,
@@ -515,9 +573,9 @@ async function getConfigGroup(configBID: string, groupName: string) {
     );
   }
 
-  await configGroup!.update({
+  await configGroup.update({
     queryLevel: QueryLevel.Cell,
-    subitemLevel: "none",
+    subitemLevel: QueryLevel.Cell,
   });
 
   return configGroup;
@@ -525,8 +583,7 @@ async function getConfigGroup(configBID: string, groupName: string) {
 
 function processRoundItems(
   roundItems: Item[] | undefined,
-  infraFFNtoCID: Record<string, Record<string, string>>,
-  infraMapping: Record<string, Item>
+  infraFFNtoCID: Record<string, Record<string, string>>
 ): ValidationResult<Record<string, RoundFields>, Record<string, string[]>> {
   try {
     const roundErrors: Record<string, string[]> = {};
@@ -538,11 +595,7 @@ function processRoundItems(
 
     for (let i = 0; i < roundItems.length; i++) {
       const roundItem = roundItems[i];
-      const roundFields = getRoundFields(
-        roundItem,
-        infraFFNtoCID,
-        infraMapping
-      );
+      const roundFields = getRoundFields(roundItem, infraFFNtoCID);
       const result = validateRoundItem(roundFields, infraFFNtoCID);
       if (result.status === "fail") {
         return result;
@@ -573,7 +626,7 @@ function processRoundItems(
 function processCampaignItem(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
-  infraMapping: Record<string, Item>
+  infraMapping: Record<string, Record<string, Item>>
 ): ValidationResult<CampaignFields> {
   try {
     const campaignFields = getCampaignFields(
@@ -581,34 +634,405 @@ function processCampaignItem(
       infraFFNtoCID,
       infraMapping
     );
-    const validationResult = validateCampaignItem(
-      campaignFields,
-      infraFFNtoCID
-    );
+    const validationResult = validateCampaignItem(campaignFields);
 
-    let campaignErrors: string[] = [];
     if (validationResult.status === "fail") {
       return validationResult;
     } else if (validationResult.status === "error") {
-      campaignErrors = validationResult.errors;
+      return validationResult;
+    } else {
+      return {
+        status: "success",
+        result: campaignFields,
+      };
     }
-
-    return campaignErrors.length
-      ? {
-          status: "error",
-          errors: campaignErrors,
-        }
-      : {
-          status: "success",
-          result: campaignFields,
-        };
   } catch (err) {
+    console.error((err as Error).stack);
     return {
       status: "fail",
       message: (err as Error).message,
     };
   }
   //VALIDATION LAYER
+}
+interface ThemeParameter {
+  parameterName: string;
+  parameterType: string;
+  communicationType: string;
+  values: {
+    [key: string]: string | null;
+  };
+}
+
+interface OfferParameter {
+  parameterName: string;
+  useAsCom: boolean | undefined;
+  parameterType: string;
+  bonusType: string | undefined;
+  bonusFieldName: string | undefined;
+  values: {
+    [key: string]: string | null;
+  };
+}
+
+//Union of types with the type as
+//discriminant
+//Will include neptune/pacman/promocode/promotion page/banner/etc
+interface ConfigItem {
+  name: string;
+  round: string;
+  type: string;
+  fieldName: string;
+  segments: Regulation[];
+  fields: ConfigItemField[];
+}
+
+//TODO:
+//MondayOptionalField add undefined
+//MondayRequiredField (string | null)
+interface ConfigItemField {
+  name: string;
+  classification: string;
+  fieldId: string;
+  value: string;
+  //Only this field is optional
+  files: string | undefined;
+}
+
+//NOTE: Can throw error for not existing required config keys
+function getThemeItems(
+  themeGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): Record<string, ThemeParameter> {
+  const themeItems: Record<string, ThemeParameter> = {};
+
+  if (!themeGroup.items) {
+    return {};
+  }
+
+  const parameterTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Theme][FRIENDLY_FIELD_NAMES.Parameter_Type];
+  const communicationTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Theme][FRIENDLY_FIELD_NAMES.Parameter_Type];
+
+  //we loop over regulations and get the value.
+  //value is null if reg name is not found
+  for (let i = 0; i < themeGroup.items.length; i++) {
+    const themeItem = themeGroup.items[i];
+    const valuesObj: Record<string, string | null> = {};
+
+    if (!themeItem.cells) {
+      //handle error
+      return {};
+    }
+
+    for (let i = 0; i < allRegulations.length; i++) {
+      const regulation = allRegulations[i];
+      const regulationName = regulation.name;
+
+      //We look for cell with the same title as regulation name,
+      //If we cant find it, we set a default value of null,
+      //if yes we populate valuesObj with the value
+      const cell = themeItem.rawCells!.find(
+        (cell) => cell.title === regulationName
+      );
+
+      //We're treting columns that does not exist to be null
+      //This is against our convention to set undefined to mean does not exist
+      //and null for existing but empty value
+      //The only reason is for legacy
+      valuesObj[regulationName] = cell ? (cell.value as string) : null;
+    }
+
+    themeItems[themeItem.name] = {
+      parameterName: themeItem.name,
+      parameterType: themeItem.cells[parameterTypeCID].value as string,
+      communicationType: themeItem.cells[communicationTypeCID].value as string,
+      values: valuesObj,
+    };
+  }
+
+  return themeItems;
+}
+
+function getConfigItems(
+  configGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): ConfigItem[] {
+  const activeRegulations = allRegulations
+    .filter((reg) => reg.isChecked)
+    .map((reg) => reg.name);
+
+  const commTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Configuration][
+      FRIENDLY_FIELD_NAMES.Configuration_Type
+    ];
+  const commFieldCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Configuration][
+      FRIENDLY_FIELD_NAMES.Configuration_Field
+    ];
+  const commRoundCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Configuration][
+      FRIENDLY_FIELD_NAMES.Configuration_Round
+    ];
+
+  if (!configGroup.items) {
+    //TODO: Handle no configuration here..
+    return [];
+  }
+
+  let configItems: ConfigItem[] = [];
+  //Loop over items of group and do an if else to handle
+  for (let i = 0; i < configGroup.items.length; i++) {
+    const item = configGroup.items[i];
+    if (!item.cells || !item.rawCells) {
+      //TODO: No cells mean all items have no cells, handle error
+      return [];
+    }
+
+    const segments: Regulation[] = [];
+
+    for (let i = 0; i < item.rawCells.length; i++) {
+      const cell = item.rawCells[i];
+      if ([commTypeCID, commFieldCID, commRoundCID].includes(cell.columnId)) {
+        continue;
+      }
+      //TODO: Monsta, add types in cell
+      if (cell.text === "checkbox") {
+        segments.push({ name: cell.title, isChecked: Boolean(cell.value) });
+      }
+    }
+
+    //TODO: Monsta Make another field: 'values', which outputs the string value.
+    const itemRound = item.cells[commRoundCID].value as string;
+    const itemType = item.cells[commTypeCID].value as string;
+    const itemField = item.cells[commFieldCID].value as string;
+
+    if (!item.subitems) {
+      //subitems should not be undefined, can be empty, but not undefined.
+      return [];
+    }
+
+    //TODO: REGION: Refactor this region
+    //TODO: Monsta get columns of a board/subitem board
+    let foundClassificationCID;
+    let foundFieldIdCID;
+    let foundValueCID;
+    let foundFilesCID;
+
+    //Workaround to get CIDs
+    for (let j = 0; j < item.subitems.length; j++) {
+      const subitem = item.subitems[j];
+
+      if (!subitem.rawCells || subitem.rawCells.length === 0) {
+        break;
+      }
+
+      //Iterate and take the CIDs
+      for (let k = 0; k < subitem.rawCells.length; k++) {
+        const cell = subitem.rawCells[k];
+
+        if (cell.title === CONFIGURATION_COLUMN_NAMES.Classification) {
+          foundClassificationCID = cell.columnId;
+        } else if (cell.title === CONFIGURATION_COLUMN_NAMES.Field_Id) {
+          foundFieldIdCID = cell.columnId;
+        } else if (cell.title === CONFIGURATION_COLUMN_NAMES.Files) {
+          foundFilesCID = cell.columnId;
+        } else if (cell.title === CONFIGURATION_COLUMN_NAMES.Value) {
+          foundValueCID = cell.columnId;
+        }
+      }
+    }
+
+    //
+    if (!foundClassificationCID || !foundFieldIdCID || !foundValueCID) {
+      //TODO: Fix appropriately
+      throw new Error();
+    }
+    //Get subitems
+    let fields: ConfigItemField[] = [];
+    for (let j = 0; j < item.subitems.length; j++) {
+      const subitem = item.subitems[j];
+
+      if (!subitem.rawCells || !subitem.cells) {
+        break;
+      }
+      const field: ConfigItemField = {
+        name: subitem.name,
+        classification: subitem.cells[foundClassificationCID].value as string,
+        fieldId: subitem.cells[foundFieldIdCID].value as string,
+        value: subitem.cells[foundValueCID].value as string,
+        files: foundFilesCID
+          ? (subitem.cells[foundFilesCID].value as string)
+          : undefined,
+      };
+
+      fields.push(field);
+    }
+
+    //END REGION
+    const configItem: ConfigItem = {
+      name: item.name,
+      round: itemRound,
+      type: itemType,
+      fieldName: itemField,
+      fields,
+    };
+  }
+}
+
+function getOfferItems(
+  offerGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): Record<string, OfferParameter> {
+  const offerItems: Record<string, OfferParameter> = {};
+
+  if (!offerGroup.items) {
+    //TODO: items can be empty but not undefined
+    //handle error here
+    return {};
+  }
+
+  //TODO: VALIDATE EXISTENCE OF REQUIRED COLUMNS
+  const parameterTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Parameter_Type];
+  const useAsComCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Use_as_Com];
+  const bonusTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Bonus_Type];
+  const bonusFieldNameCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Bonus_Field_Name];
+
+  //we loop over regulations and get the value.
+  //value is null if reg name is not found
+  for (let i = 0; i < offerGroup.items.length; i++) {
+    const offerItem = offerGroup.items[i];
+    const valuesObj: Record<string, string | null> = {};
+
+    if (!offerItem.cells) {
+      //handle error
+      return {};
+    }
+
+    for (let i = 0; i < allRegulations.length; i++) {
+      const regulation = allRegulations[i];
+      const regulationName = regulation.name;
+
+      //We look for cell with the same title as regulation name,
+      //If we cant find it, we set a default value of null,
+      //if yes we populate valuesObj with the value
+      const cell = offerItem.rawCells!.find(
+        (cell) => cell.title === regulationName
+      );
+      valuesObj[regulationName] = cell ? (cell.value as string) : null;
+    }
+
+    //TODO: Fix typing of cell value
+    offerItems[offerItem.name] = {
+      parameterName: offerItem.name,
+      bonusFieldName: bonusFieldNameCID
+        ? (offerItem.cells[bonusFieldNameCID].value as string)
+        : undefined,
+      bonusType: bonusTypeCID
+        ? (offerItem.cells[bonusTypeCID].value as string)
+        : undefined,
+      useAsCom: useAsComCID
+        ? (offerItem.cells[useAsComCID].value as boolean)
+        : undefined,
+      parameterType: offerItem.cells[parameterTypeCID].value as string,
+      values: valuesObj,
+    };
+  }
+
+  return offerItems;
+}
+
+function processThemeGroup(
+  themeGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): ValidationResult<Record<string, ThemeParameter>, Record<string, string[]>> {
+  try {
+    const themeItems = getThemeItems(themeGroup, infraFFNtoCID, allRegulations);
+    const validationResult = validateThemeItems(themeItems);
+
+    if (validationResult.status === "fail") {
+      return validationResult;
+    } else if (validationResult.status === "error") {
+      return validationResult;
+    }
+
+    return {
+      status: "success",
+      result: themeItems,
+    };
+  } catch (err) {
+    return {
+      status: "fail",
+      message: (err as Error).message,
+    };
+  }
+}
+
+function processOfferGroup(
+  offerGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): ValidationResult<Record<string, OfferParameter>, Record<string, string[]>> {
+  try {
+    const offerItems = getOfferItems(offerGroup, infraFFNtoCID, allRegulations);
+    const validationResult = validateOfferItems(offerItems);
+
+    if (validationResult.status === "fail") {
+      return validationResult;
+    } else if (validationResult.status === "error") {
+      return validationResult;
+    }
+
+    return {
+      status: "success",
+      result: offerItems,
+    };
+  } catch (err) {
+    return {
+      status: "fail",
+      message: (err as Error).message,
+    };
+  }
+}
+
+function processConfigGroup(
+  configGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): ValidationResult<Record<string, OfferParameter>, Record<string, string[]>> {
+  try {
+    const configItems = getConfigItems(
+      configGroup,
+      infraFFNtoCID,
+      allRegulations
+    );
+    const validationResult = validateConfigItems(configItems);
+
+    if (validationResult.status === "fail") {
+      return validationResult;
+    } else if (validationResult.status === "error") {
+      return validationResult;
+    }
+
+    return {
+      status: "success",
+      result: configItems,
+    };
+  } catch (err) {
+    return {
+      status: "fail",
+      message: (err as Error).message,
+    };
+  }
 }
 
 //The first part is RETRIEVAL it will capture a snapshot of
@@ -621,12 +1045,60 @@ function processCampaignItem(
 //AND we are moving the validation layer of Monday entirely in Tuesday API
 //COOL RIGHT?
 
+interface Regulation {
+  name: string;
+  isChecked: boolean;
+}
+
+function generateRegulations(
+  regulations: Record<string, boolean>,
+  tiers: RawValue<string>,
+  ab: RawValue<number>
+): Regulation[] {
+  //if tiers is undefined (not declared in infra boards)
+  //we will just use the regulations as is.
+  //if ab is empty (null) or not declared (undefined), 0 which is validation error, means we turn it off
+  const allRegulations: Regulation[] = [];
+  if (tiers) {
+    const tiersList = tiers.split(",").map((tier) => tier.trim());
+    Object.keys(regulations).forEach((regulation) => {
+      tiersList.forEach((tier) => {
+        allRegulations.push({
+          name: `${regulation} ${tier}`,
+          isChecked: regulations[regulation],
+        });
+        if (ab) {
+          allRegulations.push({
+            name: `${regulation} ${tier}_B`,
+            isChecked: regulations[regulation],
+          });
+        }
+      });
+    });
+  } else {
+    Object.keys(regulations).forEach((regulation) => {
+      allRegulations.push({
+        name: regulation,
+        isChecked: regulations[regulation],
+      });
+      if (ab) {
+        allRegulations.push({
+          name: `${regulation}_B`,
+          isChecked: regulations[regulation],
+        });
+      }
+    });
+  }
+
+  return allRegulations;
+}
+
 async function importCampaign(webhook: MondayWebHook) {
   const campaignPID = Number(webhook.event.pulseId);
   const campaignBID = Number(webhook.event.boardId);
   const friendlyFieldNameCID = process.env.INFRA_CONFIG_FFN_CID!;
   const columnIDCID = process.env.INFRA_CONFIG_COLUMN_ID_CID!;
-  const columnGroupCID = process.env.INFRA_CONFIG_COLUMN_GROUP_CID!;
+  const columnGroupCID = process.env.INFRA_CONFIG_PARAMETER_LEVEL_CID!;
 
   const [infraBoard, campaignItem] = await Promise.all([
     mondayClient.getBoard(process.env.INFRA_BOARD!, {
@@ -659,15 +1131,15 @@ async function importCampaign(webhook: MondayWebHook) {
   });
 
   const infraFFNtoCID: Record<string, Record<string, string>> = {};
-  const infraMapping: Record<string, Item> = {};
+  const infraMapping: Record<string, Record<string, Item>> = {};
   infraItem?.subitems?.forEach((subitem) => {
-    const FFN = subitem.cells![friendlyFieldNameCID];
-    const columnGroup = subitem.cells![columnGroupCID];
+    const FFN = subitem.cells![friendlyFieldNameCID].value as string;
+    const columnGroup = String(subitem.cells![columnGroupCID].value);
 
-    infraMapping[String(FFN.value)] = subitem;
-    infraFFNtoCID[String(columnGroup)] =
-      infraFFNtoCID[String(columnGroup.value)] || {};
-    infraFFNtoCID[String(columnGroup)][String(FFN.value)] = String(
+    infraMapping[columnGroup] = infraMapping[columnGroup] || {};
+    infraMapping[columnGroup][FFN] = subitem;
+    infraFFNtoCID[columnGroup] = infraFFNtoCID[columnGroup] || {};
+    infraFFNtoCID[columnGroup][FFN] = String(
       subitem.cells![String(columnIDCID)].value
     );
   });
@@ -686,11 +1158,7 @@ async function importCampaign(webhook: MondayWebHook) {
     return;
   }
 
-  const roundDetails = processRoundItems(
-    campaignItem.subitems,
-    infraFFNtoCID,
-    infraMapping
-  );
+  const roundDetails = processRoundItems(campaignItem.subitems, infraFFNtoCID);
 
   //GET theme board id, offer board id, etc...
   const themeBID = infraItem.cells[process.env.INFRA_THEME_BOARD_ID_CID!].value;
@@ -701,21 +1169,56 @@ async function importCampaign(webhook: MondayWebHook) {
   const themeName = campaignDetails.result.theme;
   const offerName = campaignDetails.result.offer;
 
-  //TODO: Run in parallel
+  const regulations = campaignDetails.result.regulations;
+  const tiers = campaignDetails.result.tiers; //Comma-separated
+  const ab = campaignDetails.result.ab;
+
+  const allRegulations = generateRegulations(regulations, tiers, ab);
+
   //TODO: Add getuser in monsta
   //TODO: Query injection instead of multiple cases
-  const themeGroup = await getThemeGroup(
-    themeBID as string,
-    themeName as string
+
+  //TODO: Maybe offer batching capabilities to Monsta
+  const [themeGroup, offerGroup, configGroup] = await Promise.all([
+    getThemeGroup(themeBID as string, themeName as string),
+    getOfferGroup(offerBID as string, offerName as string),
+    getConfigGroup(configBID as string, offerName as string),
+  ]);
+
+  const themeDetails = processThemeGroup(
+    themeGroup,
+    infraFFNtoCID,
+    allRegulations
   );
-  const offerDetails = await getOfferGroup(
-    offerBID as string,
-    offerName as string
+
+  const offerDetails = processOfferGroup(
+    offerGroup,
+    infraFFNtoCID,
+    allRegulations
   );
-  const configDetails = await getConfigGroup(
-    configBID as string,
-    offerName as string
-  );
+
+  const configDetails = processConfigGroup(configGroup, infraFFNtoCID);
+
+  if (
+    themeDetails.status === "fail" ||
+    offerDetails.status === "fail" ||
+    roundDetails.status === "fail"
+  ) {
+    //generate report
+    return;
+  } else if (
+    themeDetails.status === "error" ||
+    offerDetails.status === "error" ||
+    roundDetails.status === "error"
+  ) {
+    //error handling here
+    return;
+  }
+
+  console.log(JSON.stringify(campaignDetails.result, null, 2));
+  console.log(JSON.stringify(roundDetails.result, null, 2));
+  console.log(JSON.stringify(themeDetails.result, null, 2));
+  console.log(JSON.stringify(offerDetails.result, null, 2));
 }
 
 // Run the server!
