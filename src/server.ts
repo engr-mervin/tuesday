@@ -1100,12 +1100,7 @@ async function importCampaign(webhook: MondayWebHook) {
   const columnIDCID = process.env.INFRA_CONFIG_COLUMN_ID_CID!;
   const columnGroupCID = process.env.INFRA_CONFIG_PARAMETER_LEVEL_CID!;
 
-  const x = mondayClient.operations.getBoardItemsOp({ids: String(process.env.INFRA_BOARD)});
-
-  console.log(x);
-  return;
   const [infraBoard, campaignItem] = await Promise.all([
-    mondayClient.operations.getBoardItemsOp({ids: String(process.env.INFRA_BOARD)}),
     mondayClient.getBoard(process.env.INFRA_BOARD!, {
       queryLevel: QueryLevel.Cell,
       subitemLevel: "none",
