@@ -21,6 +21,7 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "fastify": "^5.0.0",
-    "monday-sdk-js": "^0.5.6"
+    "monday-sdk-js": "^0.5.6",
+    "monstaa": "^1.2.0"
   }
 }
