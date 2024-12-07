@@ -8,6 +8,7 @@ import { addDays, getToday } from "./helpers/dateFunctions.js";
 import { getItemsFromInfraMapping, } from "./helpers/infraFunctions.js";
 import { ConfigError } from "./errors/configError.js";
 import { isInteger } from "./helpers/validatorFunctions.js";
+import { ENV } from "./config/envs.js";
 const fastify = Fastify({
     logger: true,
 });
@@ -27,13 +28,16 @@ fastify.post("/import-campaign", async function handler(request, reply) {
     reply.code(200).send({ status: "ok" });
 });
 async function getThemeGroup(themeBID, groupName) {
-    const themeGroups = await mondayClient.getBoard(themeBID, {
-        queryLevel: QueryLevel.Group,
-    });
     if (groupName === "Choose Theme") {
         throw new Error(`Theme field is empty.`);
     }
-    const themeGroup = themeGroups.groups?.find((group) => group.title === groupName);
+    const themeBoard = await mondayClient.getBoard(themeBID, {
+        queryLevel: QueryLevel.Group,
+    });
+    if (themeBoard === null) {
+        throw new Error(`Theme board not found.`);
+    }
+    const themeGroup = themeBoard.groups?.find((group) => group.title === groupName);
     if (!themeGroup) {
         throw new Error(`Group name ${groupName} is not found in Board:${themeBID}.`);
     }
@@ -44,13 +48,16 @@ async function getThemeGroup(themeBID, groupName) {
     return themeGroup;
 }
 async function getOfferGroup(offerBID, groupName) {
-    const offerGroups = await mondayClient.getBoard(offerBID, {
-        queryLevel: QueryLevel.Group,
-    });
     if (groupName === "Choose Offer") {
         throw new Error(`Offer field is empty.`);
     }
-    const offerGroup = offerGroups.groups?.find((group) => group.title === groupName);
+    const offerBoard = await mondayClient.getBoard(offerBID, {
+        queryLevel: QueryLevel.Group,
+    });
+    if (offerBoard === null) {
+        throw new Error(`Theme board not found.`);
+    }
+    const offerGroup = offerBoard.groups?.find((group) => group.title === groupName);
     if (!offerGroup) {
         throw new Error(`Group name ${groupName} is not found in Board:${offerBID}.`);
     }
@@ -106,39 +113,39 @@ function getRoundFields(roundItem, infraFFNtoCID) {
     }
     const roundTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Type];
     const roundType = roundTypeCID
-        ? roundItem.cells[roundTypeCID].value
+        ? roundItem.values[roundTypeCID]
         : undefined;
     const startDateCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
     const startDate = startDateCID
-        ? roundItem.cells[startDateCID].value
+        ? roundItem.values[startDateCID]
         : undefined;
     const endDateCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
     const endDate = endDateCID
-        ? roundItem.cells[endDateCID].value
+        ? roundItem.values[endDateCID]
         : undefined;
     const emailScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
     const emailScheduleHour = emailScheduleHourCID
-        ? roundItem.cells[emailScheduleHourCID].value
+        ? roundItem.values[emailScheduleHourCID]
         : undefined;
     const SMSScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
     const SMSScheduleHour = SMSScheduleHourCID
-        ? roundItem.cells[SMSScheduleHourCID].value
+        ? roundItem.values[SMSScheduleHourCID]
         : undefined;
     const OMGScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
     const OMGScheduleHour = OMGScheduleHourCID
-        ? roundItem.cells[OMGScheduleHourCID].value
+        ? roundItem.values[OMGScheduleHourCID]
         : undefined;
     const pushScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
     const pushScheduleHour = pushScheduleHourCID
-        ? roundItem.cells[pushScheduleHourCID].value
+        ? roundItem.values[pushScheduleHourCID]
         : undefined;
     const isOneTimeCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
     const isOneTime = isOneTimeCID
-        ? roundItem.cells[isOneTimeCID].value
+        ? roundItem.values[isOneTimeCID]
         : undefined;
     const tysonRoundCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
     const tysonRound = tysonRoundCID
-        ? roundItem.cells[tysonRoundCID].value
+        ? roundItem.values[tysonRoundCID]
         : undefined;
     //Validate undefined values
     return {
@@ -161,36 +168,35 @@ function getCampaignFields(campaignItem, infraFFNtoCID, infraMapping) {
     }
     const dateRangeCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Date_Range];
     const [startDate, endDate] = dateRangeCID
-        ? campaignItem.cells[dateRangeCID].value
+        ? campaignItem.values[dateRangeCID]
         : [undefined, undefined];
     const abCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.AB];
-    const ab = abCID ? campaignItem.cells[abCID].value : undefined;
+    const ab = abCID ? campaignItem.values[abCID] : undefined;
     const tiersCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
     const tiers = tiersCID
-        ? campaignItem.cells[tiersCID].value
+        ? campaignItem.values[tiersCID]
         : undefined;
     const controlGroupCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Control_Group];
     const controlGroup = controlGroupCID
-        ? campaignItem.cells[controlGroupCID].value
+        ? campaignItem.values[controlGroupCID]
         : undefined;
     const allRegulations = getItemsFromInfraMapping(infraMapping, (item) => {
-        return (item.cells[process.env.INFRA_CONFIG_COLUMN_GROUP_CID].value ===
+        return (item.values[ENV.INFRA.CIDS.COLUMN_GROUP] ===
             COLUMN_GROUP.Market);
     });
     const allMarketsCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
     const regulations = {};
     for (let i = 0; i < allRegulations.length; i++) {
         const regulation = allRegulations[i];
-        const regulationName = regulation.cells[process.env.INFRA_CONFIG_FFN_CID]
-            .value;
-        const regulationCID = regulation.cells[process.env.INFRA_CONFIG_COLUMN_ID_CID].value;
-        const isRegulationChecked = Boolean(campaignItem.cells[allMarketsCID].value ||
-            campaignItem.cells[regulationCID].value);
+        const regulationName = regulation.values[process.env.INFRA_CONFIG_FFN_CID];
+        const regulationCID = regulation.values[process.env.INFRA_CONFIG_COLUMN_ID_CID];
+        const isRegulationChecked = Boolean(campaignItem.values[allMarketsCID] ||
+            campaignItem.values[regulationCID]);
         regulations[regulationName] = isRegulationChecked;
     }
     const statusCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Status];
     const status = statusCID
-        ? campaignItem.cells[statusCID].value
+        ? campaignItem.values[statusCID]
         : undefined;
     const personCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Person];
     const personId = personCID
@@ -199,11 +205,11 @@ function getCampaignFields(campaignItem, infraFFNtoCID, infraMapping) {
         : undefined;
     const themeCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Theme];
     const theme = themeCID
-        ? campaignItem.cells[themeCID].value
+        ? campaignItem.values[themeCID]
         : undefined;
     const offerCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Offer];
     const offer = offerCID
-        ? campaignItem.cells[offerCID].value
+        ? campaignItem.values[offerCID]
         : undefined;
     return {
         name: campaignItem.name,
@@ -344,13 +350,16 @@ function validateOfferItems(themeItems) {
     }
 }
 async function getConfigGroup(configBID, groupName) {
-    const configGroups = await mondayClient.getBoard(configBID, {
-        queryLevel: QueryLevel.Group,
-    });
     if (groupName === "Choose Offer") {
         throw new Error(`Offer field is empty.`);
     }
-    const configGroup = configGroups.groups?.find((group) => group.title === groupName);
+    const configBoard = await mondayClient.getBoard(configBID, {
+        queryLevel: QueryLevel.Group,
+    });
+    if (configBoard === null) {
+        throw new Error(`Config board not found.`);
+    }
+    const configGroup = configBoard.groups?.find((group) => group.title === groupName);
     if (!configGroup) {
         throw new Error(`Group name ${groupName} is not found in Board:${configBID}.`);
     }
@@ -447,7 +456,8 @@ function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
             //We look for cell with the same title as regulation name,
             //If we cant find it, we set a default value of null,
             //if yes we populate valuesObj with the value
-            const cell = themeItem.rawCells.find((cell) => cell.title === regulationName);
+            const cells = Object.values(themeItem.cells);
+            const cell = cells.find((cell) => cell.title === regulationName);
             //We're treting columns that does not exist to be null
             //This is against our convention to set undefined to mean does not exist
             //and null for existing but empty value
@@ -478,13 +488,14 @@ function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
     //Loop over items of group and do an if else to handle
     for (let i = 0; i < configGroup.items.length; i++) {
         const item = configGroup.items[i];
-        if (!item.cells || !item.rawCells) {
+        if (!item.cells || !item.values) {
             //TODO: No cells mean all items have no cells, handle error
             return [];
         }
         const segments = [];
-        for (let i = 0; i < item.rawCells.length; i++) {
-            const cell = item.rawCells[i];
+        const items = Object.values(item.cells);
+        for (let i = 0; i < items.length; i++) {
+            const cell = items[i];
             if ([commTypeCID, commFieldCID, commRoundCID].includes(cell.columnId)) {
                 continue;
             }
@@ -507,15 +518,16 @@ function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
         let foundFieldIdCID;
         let foundValueCID;
         let foundFilesCID;
-        //Workaround to get CIDs
+        //TODO: Workaround to get CIDs
         for (let j = 0; j < item.subitems.length; j++) {
             const subitem = item.subitems[j];
-            if (!subitem.rawCells || subitem.rawCells.length === 0) {
+            const rawCells = Object.values(subitem.cells);
+            if (!subitem.cells || rawCells.length === 0) {
                 break;
             }
             //Iterate and take the CIDs
-            for (let k = 0; k < subitem.rawCells.length; k++) {
-                const cell = subitem.rawCells[k];
+            for (let k = 0; k < rawCells.length; k++) {
+                const cell = rawCells[k];
                 if (cell.title === CONFIGURATION_COLUMN_NAMES.Classification) {
                     foundClassificationCID = cell.columnId;
                 }
@@ -590,7 +602,7 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
             //We look for cell with the same title as regulation name,
             //If we cant find it, we set a default value of null,
             //if yes we populate valuesObj with the value
-            const cell = offerItem.rawCells.find((cell) => cell.title === regulationName);
+            const cell = Object.values(offerItem.cells).find((cell) => cell.title === regulationName);
             valuesObj[regulationName] = cell ? cell.value : null;
         }
         //TODO: Fix typing of cell value
@@ -728,7 +740,13 @@ async function importCampaign(webhook) {
         }),
         mondayClient.getItem({ itemId: campaignPID }, { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }),
     ]);
-    const infraItem = infraBoard.items.find((item) => Number(item.cells[process.env.INFRA_CAMPAIGN_BOARD_ID_CID].value) ===
+    if (!infraBoard) {
+        throw new Error(`Infra board not found.`);
+    }
+    if (!campaignItem) {
+        throw new Error(`Campaign item not found.`);
+    }
+    const infraItem = infraBoard.items.find((item) => Number(item.values[ENV.INFRA.ROOT_CIDS.CAMPAIGN_BOARD_ID]) ===
         campaignBID);
     if (!infraItem) {
         throw new Error(`Infra item not found.`);
@@ -743,27 +761,27 @@ async function importCampaign(webhook) {
     const infraFFNtoCID = {};
     const infraMapping = {};
     infraItem?.subitems?.forEach((subitem) => {
-        const FFN = subitem.cells[friendlyFieldNameCID].value;
-        const columnGroup = String(subitem.cells[columnGroupCID].value);
+        const FFN = subitem.values[ENV.INFRA.CIDS.FFN];
+        const columnGroup = subitem.values[ENV.INFRA.CIDS.COLUMN_GROUP];
         infraMapping[columnGroup] = infraMapping[columnGroup] || {};
         infraMapping[columnGroup][FFN] = subitem;
         infraFFNtoCID[columnGroup] = infraFFNtoCID[columnGroup] || {};
-        infraFFNtoCID[columnGroup][FFN] = String(subitem.cells[String(columnIDCID)].value);
+        infraFFNtoCID[columnGroup][FFN] = String(subitem.values[ENV.INFRA.CIDS.COLUMN_ID]);
     });
     const campaignDetails = processCampaignItem(campaignItem, infraFFNtoCID, infraMapping);
     if (campaignDetails.status === "error") {
-        //generate report
+        //TODO: generate report
         return;
     }
     else if (campaignDetails.status === "fail") {
-        //error handling here
+        //TODO: error handling here
         return;
     }
     const roundDetails = processRoundItems(campaignItem.subitems, infraFFNtoCID);
     //GET theme board id, offer board id, etc...
-    const themeBID = infraItem.cells[process.env.INFRA_THEME_BOARD_ID_CID].value;
-    const offerBID = infraItem.cells[process.env.INFRA_OFFER_BOARD_ID_CID].value;
-    const configBID = infraItem.cells[process.env.INFRA_CONFIG_BOARD_ID_CID].value;
+    const themeBID = infraItem.values[ENV.INFRA.ROOT_CIDS.THEME_BOARD_ID];
+    const offerBID = infraItem.values[ENV.INFRA.ROOT_CIDS.OFFER_BOARD_ID];
+    const configBID = infraItem.values[ENV.INFRA.ROOT_CIDS.CONFIG_BOARD_ID];
     const themeName = campaignDetails.result.theme;
     const offerName = campaignDetails.result.offer;
     const regulations = campaignDetails.result.regulations;
