@@ -664,7 +664,7 @@ interface ThemeParameter {
 }
 
 interface OfferParameter {
-  name: string;
+  parameterName: string;
   useAsCom: boolean | undefined;
   parameterType: string;
   bonusType: string | undefined;
@@ -910,7 +910,7 @@ function getOfferItems(
     }
 
     offerItems.push({
-      name: offerItem.name,
+      parameterName: offerItem.name,
       bonusFieldName: bonusFieldNameCID
         ? (offerItem.values[bonusFieldNameCID] as string)
         : undefined,

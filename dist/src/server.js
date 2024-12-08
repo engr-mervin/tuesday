@@ -577,7 +577,7 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
             valuesObj[regulationName] = cell ? cell.value : null;
         }
         offerItems.push({
-            name: offerItem.name,
+            parameterName: offerItem.name,
             bonusFieldName: bonusFieldNameCID
                 ? offerItem.values[bonusFieldNameCID]
                 : undefined,
