@@ -29,9 +29,10 @@ export const FRIENDLY_FIELD_NAMES = {
     Bonus_Type: "Bonus Type",
     Bonus_Field_Name: "Bonus Field Name",
     Use_as_Com: "Use as Com",
-    Configuration_Type: "Configuration Type",
-    Configuration_Field: "Configuration Field",
-    Configuration_Round: "Configuration Round",
+    //TODO: Align these
+    Configuration_Type: "Communication Type",
+    Configuration_Field: "Communication Field",
+    Configuration_Round: "Communication Round",
 };
 export const ROUND_TYPES = {
     Intro: "Intro",
@@ -58,7 +59,8 @@ export const PARAMETER_LEVEL = {
     Round: "Round",
     Theme: "Theme",
     Offer: "Offer",
-    Configuration: "Configuration",
+    //TODO: Align this
+    Configuration: "Communication",
     None: "",
 };
 export const CONFIGURATION_TYPES = {
@@ -79,7 +81,7 @@ export const COLUMN_GROUP = {
 };
 export const CONFIGURATION_COLUMN_NAMES = {
     Classification: "Classification",
-    Field_Id: "Field Id",
+    Field_Id: "Field_Id",
     Value: "Value",
     Files: "Files",
 };

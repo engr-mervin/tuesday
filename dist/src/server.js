@@ -453,7 +453,7 @@ function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
             //if yes we populate valuesObj with the value
             const cells = Object.values(themeItem.cells);
             const cell = cells.find((cell) => cell.title === regulationName);
-            //We're treting columns that does not exist to be null
+            //We're treating columns that does not exist to be null
             //This is against our convention to set undefined to mean does not exist
             //and null for existing but empty value
             //The only reason is for legacy
@@ -461,8 +461,8 @@ function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
         }
         themeItems[themeItem.name] = {
             parameterName: themeItem.name,
-            parameterType: themeItem.cells[parameterTypeCID].value,
-            communicationType: themeItem.cells[communicationTypeCID].value,
+            parameterType: themeItem.values[parameterTypeCID],
+            communicationType: themeItem.values[communicationTypeCID],
             values: valuesObj,
         };
     }
@@ -477,36 +477,46 @@ async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
     const commRoundCID = infraFFNtoCID[PARAMETER_LEVEL.Configuration][FRIENDLY_FIELD_NAMES.Configuration_Round];
     if (configGroup.items.length === 0) {
         //TODO: Handle no configuration here..
-        return [];
+        return {};
     }
-    let configItems = [];
+    let configItems = {};
     for (let i = 0; i < configGroup.items.length; i++) {
         const item = configGroup.items[i];
-        if (Object.values(item.cells)) {
-            //TODO: No cells mean all items have no cells, handle error
-            return [];
+        const segments = {};
+        const cells = Object.values(item.cells);
+        if (cells.length === 0) {
+            //TODO: No cells means board does not have columns
+            return {};
         }
-        const segments = [];
-        const items = Object.values(item.cells);
-        for (let i = 0; i < items.length; i++) {
-            const cell = items[i];
-            if ([commTypeCID, commFieldCID, commRoundCID].includes(cell.columnId)) {
-                continue;
-            }
-            if (cell.type === "checkbox") {
-                segments.push({ name: cell.title, isChecked: Boolean(cell.value) });
+        for (let i = 0; i < cells.length; i++) {
+            const cell = cells[i];
+            if (activeRegulations.includes(cell.title)) {
+                segments[cell.title] = cell.value;
             }
         }
         const itemRound = item.values[commRoundCID];
         const itemType = item.values[commTypeCID];
         const itemField = item.values[commFieldCID];
+        //If item has no subitems, we add a partial config item
+        if (item.subitems.length === 0) {
+            const configItem = {
+                name: item.name,
+                round: itemRound,
+                type: itemType,
+                fieldName: itemField,
+                segments
+            };
+            configItems[item.name] = configItem;
+            continue;
+        }
+        //Otherwise we handle the subitem values by comparing column titles
         const sBoardId = item.subitems[0].boardId;
         const sBoard = await mondayClient.getBoard(sBoardId, {
             includeColumns: true,
             queryLevel: QueryLevel.Board
         });
         if (!sBoard) {
-            throw new Error();
+            throw new Error(`Subitem board is missing`);
         }
         const columns = sBoard.columns;
         const classification = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Classification);
@@ -514,7 +524,7 @@ async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
         const files = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Files);
         const value = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Value);
         if (!classification || !fieldId || !value) {
-            throw new Error(`Missing subitem columns`);
+            throw new Error(`Missing required subitem columns`);
         }
         let fields = [];
         for (let j = 0; j < item.subitems.length; j++) {
@@ -541,7 +551,7 @@ async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
             fields,
             segments
         };
-        configItems.push(configItem);
+        configItems[item.name] = configItem;
     }
     return configItems;
 }
@@ -573,15 +583,15 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
         offerItems[offerItem.name] = {
             parameterName: offerItem.name,
             bonusFieldName: bonusFieldNameCID
-                ? offerItem.cells[bonusFieldNameCID].value
+                ? offerItem.values[bonusFieldNameCID]
                 : undefined,
             bonusType: bonusTypeCID
-                ? offerItem.cells[bonusTypeCID].value
+                ? offerItem.values[bonusTypeCID]
                 : undefined,
             useAsCom: useAsComCID
-                ? offerItem.cells[useAsComCID].value
+                ? offerItem.values[useAsComCID]
                 : undefined,
-            parameterType: offerItem.cells[parameterTypeCID].value,
+            parameterType: offerItem.values[parameterTypeCID],
             values: valuesObj,
         };
     }
@@ -636,6 +646,28 @@ function validateConfigItems(configItems) {
         status: "success",
         data: null,
     };
+}
+async function processConfigGroup(configGroup, infraFFNtoCID, allRegulations) {
+    try {
+        const configItems = await getConfigItems(configGroup, infraFFNtoCID, allRegulations);
+        // const validationResult = validateConfigItems(configItems);
+        // if (validationResult.status === "fail") {
+        //   return validationResult;
+        // } else if (validationResult.status === "error") {
+        //   return validationResult;
+        // }
+        return {
+            status: "success",
+            result: configItems,
+        };
+    }
+    catch (err) {
+        console.error(err.stack);
+        return {
+            status: "fail",
+            message: err.message,
+        };
+    }
 }
 function generateRegulations(regulations, tiersList, ab) {
     //if tiers is undefined (not declared in infra boards)
@@ -743,7 +775,7 @@ async function importCampaign(webhook) {
     ]);
     const themeDetails = processThemeGroup(themeGroup, infraFFNtoCID, allRegulations);
     const offerDetails = processOfferGroup(offerGroup, infraFFNtoCID, allRegulations);
-    // const configDetails = processConfigGroup(configGroup, infraFFNtoCID);
+    const configDetails = await processConfigGroup(configGroup, infraFFNtoCID, allRegulations);
     if (themeDetails.status === "fail" ||
         offerDetails.status === "fail" ||
         roundDetails.status === "fail") {

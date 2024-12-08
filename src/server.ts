@@ -682,8 +682,9 @@ interface ConfigItem {
   round: string;
   type: string;
   fieldName: string;
-  segments: Regulation[];
-  fields: ConfigItemField[];
+  segments: Record<string, string>;
+  //Optional for record with no subitems
+  fields?: ConfigItemField[];
 }
 
 //TODO:
@@ -736,7 +737,7 @@ function getThemeItems(
       const cells = Object.values(themeItem.cells);
       const cell = cells.find((cell) => cell.title === regulationName);
 
-      //We're treting columns that does not exist to be null
+      //We're treating columns that does not exist to be null
       //This is against our convention to set undefined to mean does not exist
       //and null for existing but empty value
       //The only reason is for legacy
@@ -745,8 +746,8 @@ function getThemeItems(
 
     themeItems[themeItem.name] = {
       parameterName: themeItem.name,
-      parameterType: themeItem.cells[parameterTypeCID].value as string,
-      communicationType: themeItem.cells[communicationTypeCID].value as string,
+      parameterType: themeItem.values[parameterTypeCID] as string,
+      communicationType: themeItem.values[communicationTypeCID] as string,
       values: valuesObj,
     };
   }
@@ -758,7 +759,7 @@ async function getConfigItems(
   configGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Promise<ConfigItem[]> {
+): Promise<Record<string, ConfigItem>> {
   const activeRegulations = allRegulations
     .filter((reg) => reg.isChecked)
     .map((reg) => reg.name);
@@ -778,27 +779,24 @@ async function getConfigItems(
 
   if (configGroup.items.length === 0) {
     //TODO: Handle no configuration here..
-    return [];
+    return {};
   }
-  let configItems: ConfigItem[] = [];
+  let configItems: Record<string, ConfigItem> = {};
 
   for (let i = 0; i < configGroup.items.length; i++) {
     const item = configGroup.items[i];
-    if (Object.values(item.cells)) {
-      //TODO: No cells mean all items have no cells, handle error
-      return [];
+
+    const segments: Record<string, string> = {};
+    const cells = Object.values(item.cells);
+    
+    if (cells.length === 0) {
+      //TODO: No cells means board does not have columns
+      return {};
     }
-
-    const segments: Regulation[] = [];
-
-    const items = Object.values(item.cells);
-    for (let i = 0; i < items.length; i++) {
-      const cell = items[i];
-      if ([commTypeCID, commFieldCID, commRoundCID].includes(cell.columnId)) {
-        continue;
-      }
-      if (cell.type === "checkbox") {
-        segments.push({ name: cell.title, isChecked: Boolean(cell.value) });
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if(activeRegulations.includes(cell.title)){
+        segments[cell.title] = cell.value as string;
       }
     }
 
@@ -807,13 +805,27 @@ async function getConfigItems(
     const itemField = item.values[commFieldCID] as string;
 
 
+    //If item has no subitems, we add a partial config item
+    if(item.subitems.length === 0){
+      const configItem = {
+        name: item.name,
+        round: itemRound,
+        type: itemType,
+        fieldName: itemField,
+        segments
+      };
+      configItems[item.name] = configItem;
+      continue;
+    }
+
+    //Otherwise we handle the subitem values by comparing column titles
     const sBoardId = item.subitems[0].boardId;
     const sBoard = await mondayClient.getBoard(sBoardId, {
       includeColumns: true,
       queryLevel: QueryLevel.Board
     });
     if(!sBoard){
-      throw new Error();
+      throw new Error(`Subitem board is missing`);
     }
 
     const columns = sBoard.columns;
@@ -824,7 +836,7 @@ async function getConfigItems(
     const value = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Value);
 
     if (!classification || !fieldId || !value) {
-      throw new Error(`Missing subitem columns`);
+      throw new Error(`Missing required subitem columns`);
     }
 
     let fields: ConfigItemField[] = [];
@@ -856,7 +868,7 @@ async function getConfigItems(
       segments
     };
 
-    configItems.push(configItem);
+    configItems[item.name] = configItem;
   }
 
   return configItems;
@@ -906,15 +918,15 @@ function getOfferItems(
     offerItems[offerItem.name] = {
       parameterName: offerItem.name,
       bonusFieldName: bonusFieldNameCID
-        ? (offerItem.cells[bonusFieldNameCID].value as string)
+        ? (offerItem.values[bonusFieldNameCID] as string)
         : undefined,
       bonusType: bonusTypeCID
-        ? (offerItem.cells[bonusTypeCID].value as string)
+        ? (offerItem.values[bonusTypeCID] as string)
         : undefined,
       useAsCom: useAsComCID
-        ? (offerItem.cells[useAsComCID].value as boolean)
+        ? (offerItem.values[useAsComCID] as boolean)
         : undefined,
-      parameterType: offerItem.cells[parameterTypeCID].value as string,
+      parameterType: offerItem.values[parameterTypeCID] as string,
       values: valuesObj,
     };
   }
@@ -983,36 +995,37 @@ function validateConfigItems(configItems: ConfigItem[]){
   }
 }
 
-// function processConfigGroup(
-//   configGroup: Group,
-//   infraFFNtoCID: Record<string, Record<string, string>>,
-//   allRegulations: Regulation[]
-// ): ValidationResult<Record<string, ConfigItem>, Record<string, string[]>> {
-//   try {
-//     const configItems = getConfigItems(
-//       configGroup,
-//       infraFFNtoCID,
-//       allRegulations
-//     );
-//     const validationResult = validateConfigItems(configItems);
+async function processConfigGroup(
+  configGroup: Group,
+  infraFFNtoCID: Record<string, Record<string, string>>,
+  allRegulations: Regulation[]
+): Promise<ValidationResult<Record<string, ConfigItem>, Record<string, string[]>>> {
+  try {
+    const configItems = await getConfigItems(
+      configGroup,
+      infraFFNtoCID,
+      allRegulations
+    );
+    // const validationResult = validateConfigItems(configItems);
 
-//     if (validationResult.status === "fail") {
-//       return validationResult;
-//     } else if (validationResult.status === "error") {
-//       return validationResult;
-//     }
+    // if (validationResult.status === "fail") {
+    //   return validationResult;
+    // } else if (validationResult.status === "error") {
+    //   return validationResult;
+    // }
 
-//     return {
-//       status: "success",
-//       result: configItems,
-//     };
-//   } catch (err) {
-//     return {
-//       status: "fail",
-//       message: (err as Error).message,
-//     };
-//   }
-// }
+    return {
+      status: "success",
+      result: configItems,
+    };
+  } catch (err) {
+    console.error((err as Error).stack);
+    return {
+      status: "fail",
+      message: (err as Error).message,
+    };
+  }
+}
 
 //The first part is RETRIEVAL it will capture a snapshot of
 //Monday boards values and load it into the memory, after this retrieval,
@@ -1180,7 +1193,7 @@ async function importCampaign(webhook: MondayWebHook) {
     allRegulations
   );
 
-  // const configDetails = processConfigGroup(configGroup, infraFFNtoCID);
+  const configDetails = await processConfigGroup(configGroup, infraFFNtoCID, allRegulations);
 
   if (
     themeDetails.status === "fail" ||
