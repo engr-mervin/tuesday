@@ -513,7 +513,7 @@ function validateCampaignItem(
 }
 
 function validateThemeItems(
-  themeItems: Record<string, ThemeParameter>
+  themeItems: ThemeParameter[]
 ): ValidationResult<undefined, Record<string, string[]>> {
   try {
     const themeErrors: Record<string, string[]> = {};
@@ -534,7 +534,7 @@ function validateThemeItems(
 }
 
 function validateOfferItems(
-  themeItems: Record<string, OfferParameter>
+  offerItems: OfferParameter[]
 ): ValidationResult<undefined, Record<string, string[]>> {
   try {
     const offerErrors: Record<string, string[]> = {};
@@ -664,7 +664,7 @@ interface ThemeParameter {
 }
 
 interface OfferParameter {
-  parameterName: string;
+  name: string;
   useAsCom: boolean | undefined;
   parameterType: string;
   bonusType: string | undefined;
@@ -704,11 +704,11 @@ function getThemeItems(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Record<string, ThemeParameter> {
-  const themeItems: Record<string, ThemeParameter> = {};
+): ThemeParameter[] {
+  const themeItems: ThemeParameter[] = [];
 
   if (!themeGroup.items) {
-    return {};
+    return [];
   }
 
   const parameterTypeCID =
@@ -721,12 +721,6 @@ function getThemeItems(
   for (let i = 0; i < themeGroup.items.length; i++) {
     const themeItem = themeGroup.items[i];
     const valuesObj: Record<string, string | null> = {};
-
-    if (!themeItem.cells) {
-      //handle error
-      return {};
-    }
-
     for (let i = 0; i < allRegulations.length; i++) {
       const regulation = allRegulations[i];
       const regulationName = regulation.name;
@@ -744,12 +738,12 @@ function getThemeItems(
       valuesObj[regulationName] = cell ? (cell.value as string) : null;
     }
 
-    themeItems[themeItem.name] = {
+    themeItems.push({
       parameterName: themeItem.name,
       parameterType: themeItem.values[parameterTypeCID] as string,
       communicationType: themeItem.values[communicationTypeCID] as string,
       values: valuesObj,
-    };
+    });
   }
 
   return themeItems;
@@ -759,7 +753,7 @@ async function getConfigItems(
   configGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Promise<Record<string, ConfigItem>> {
+): Promise<ConfigItem[]> {
   const activeRegulations = allRegulations
     .filter((reg) => reg.isChecked)
     .map((reg) => reg.name);
@@ -779,9 +773,9 @@ async function getConfigItems(
 
   if (configGroup.items.length === 0) {
     //TODO: Handle no configuration here..
-    return {};
+    return [];
   }
-  let configItems: Record<string, ConfigItem> = {};
+  let configItems: ConfigItem[] = [];
 
   for (let i = 0; i < configGroup.items.length; i++) {
     const item = configGroup.items[i];
@@ -791,7 +785,7 @@ async function getConfigItems(
     
     if (cells.length === 0) {
       //TODO: No cells means board does not have columns
-      return {};
+      return [];
     }
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
@@ -814,7 +808,7 @@ async function getConfigItems(
         fieldName: itemField,
         segments
       };
-      configItems[item.name] = configItem;
+      configItems.push(configItem);
       continue;
     }
 
@@ -868,7 +862,7 @@ async function getConfigItems(
       segments
     };
 
-    configItems[item.name] = configItem;
+    configItems.push(configItem);
   }
 
   return configItems;
@@ -878,8 +872,8 @@ function getOfferItems(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Record<string, OfferParameter> {
-  const offerItems: Record<string, OfferParameter> = {};
+): OfferParameter[] {
+  const offerItems: OfferParameter[] = [];
 
   //TODO: VALIDATE EXISTENCE OF REQUIRED COLUMNS
   const parameterTypeCID =
@@ -899,7 +893,7 @@ function getOfferItems(
 
     if (!offerItem.cells) {
       //TODO: Handle error
-      return {};
+      return [];
     }
 
     for (let i = 0; i < allRegulations.length; i++) {
@@ -915,8 +909,8 @@ function getOfferItems(
       valuesObj[regulationName] = cell ? (cell.value as string) : null;
     }
 
-    offerItems[offerItem.name] = {
-      parameterName: offerItem.name,
+    offerItems.push({
+      name: offerItem.name,
       bonusFieldName: bonusFieldNameCID
         ? (offerItem.values[bonusFieldNameCID] as string)
         : undefined,
@@ -928,8 +922,8 @@ function getOfferItems(
         : undefined,
       parameterType: offerItem.values[parameterTypeCID] as string,
       values: valuesObj,
-    };
-  }
+    });
+  };
 
   return offerItems;
 }
@@ -938,7 +932,7 @@ function processThemeGroup(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): ValidationResult<Record<string, ThemeParameter>, Record<string, string[]>> {
+): ValidationResult<ThemeParameter[], Record<string, string[]>> {
   try {
     const themeItems = getThemeItems(themeGroup, infraFFNtoCID, allRegulations);
     const validationResult = validateThemeItems(themeItems);
@@ -965,7 +959,7 @@ function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): ValidationResult<Record<string, OfferParameter>, Record<string, string[]>> {
+): ValidationResult<OfferParameter[], Record<string, string[]>> {
   try {
     const offerItems = getOfferItems(offerGroup, infraFFNtoCID, allRegulations);
     const validationResult = validateOfferItems(offerItems);
@@ -999,7 +993,7 @@ async function processConfigGroup(
   configGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Promise<ValidationResult<Record<string, ConfigItem>, Record<string, string[]>>> {
+): Promise<ValidationResult<ConfigItem[], Record<string, string[]>>> {
   try {
     const configItems = await getConfigItems(
       configGroup,

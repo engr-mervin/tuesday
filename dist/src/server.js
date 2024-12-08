@@ -328,7 +328,7 @@ function validateThemeItems(themeItems) {
         };
     }
 }
-function validateOfferItems(themeItems) {
+function validateOfferItems(offerItems) {
     try {
         const offerErrors = {};
         return Object.keys(offerErrors).length
@@ -430,9 +430,9 @@ function processCampaignItem(campaignItem, infraFFNtoCID, infraMapping) {
 }
 //NOTE: Can throw error for not existing required config keys
 function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
-    const themeItems = {};
+    const themeItems = [];
     if (!themeGroup.items) {
-        return {};
+        return [];
     }
     const parameterTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Theme][FRIENDLY_FIELD_NAMES.Parameter_Type];
     const communicationTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Theme][FRIENDLY_FIELD_NAMES.Parameter_Type];
@@ -441,10 +441,6 @@ function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
     for (let i = 0; i < themeGroup.items.length; i++) {
         const themeItem = themeGroup.items[i];
         const valuesObj = {};
-        if (!themeItem.cells) {
-            //handle error
-            return {};
-        }
         for (let i = 0; i < allRegulations.length; i++) {
             const regulation = allRegulations[i];
             const regulationName = regulation.name;
@@ -459,12 +455,12 @@ function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
             //The only reason is for legacy
             valuesObj[regulationName] = cell ? cell.value : null;
         }
-        themeItems[themeItem.name] = {
+        themeItems.push({
             parameterName: themeItem.name,
             parameterType: themeItem.values[parameterTypeCID],
             communicationType: themeItem.values[communicationTypeCID],
             values: valuesObj,
-        };
+        });
     }
     return themeItems;
 }
@@ -477,16 +473,16 @@ async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
     const commRoundCID = infraFFNtoCID[PARAMETER_LEVEL.Configuration][FRIENDLY_FIELD_NAMES.Configuration_Round];
     if (configGroup.items.length === 0) {
         //TODO: Handle no configuration here..
-        return {};
+        return [];
     }
-    let configItems = {};
+    let configItems = [];
     for (let i = 0; i < configGroup.items.length; i++) {
         const item = configGroup.items[i];
         const segments = {};
         const cells = Object.values(item.cells);
         if (cells.length === 0) {
             //TODO: No cells means board does not have columns
-            return {};
+            return [];
         }
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
@@ -506,7 +502,7 @@ async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
                 fieldName: itemField,
                 segments
             };
-            configItems[item.name] = configItem;
+            configItems.push(configItem);
             continue;
         }
         //Otherwise we handle the subitem values by comparing column titles
@@ -551,12 +547,12 @@ async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
             fields,
             segments
         };
-        configItems[item.name] = configItem;
+        configItems.push(configItem);
     }
     return configItems;
 }
 function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
-    const offerItems = {};
+    const offerItems = [];
     //TODO: VALIDATE EXISTENCE OF REQUIRED COLUMNS
     const parameterTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Parameter_Type];
     const useAsComCID = infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Use_as_Com];
@@ -569,7 +565,7 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
         const valuesObj = {};
         if (!offerItem.cells) {
             //TODO: Handle error
-            return {};
+            return [];
         }
         for (let i = 0; i < allRegulations.length; i++) {
             const regulation = allRegulations[i];
@@ -580,8 +576,8 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
             const cell = Object.values(offerItem.cells).find((cell) => cell.title === regulationName);
             valuesObj[regulationName] = cell ? cell.value : null;
         }
-        offerItems[offerItem.name] = {
-            parameterName: offerItem.name,
+        offerItems.push({
+            name: offerItem.name,
             bonusFieldName: bonusFieldNameCID
                 ? offerItem.values[bonusFieldNameCID]
                 : undefined,
@@ -593,8 +589,9 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
                 : undefined,
             parameterType: offerItem.values[parameterTypeCID],
             values: valuesObj,
-        };
+        });
     }
+    ;
     return offerItems;
 }
 function processThemeGroup(themeGroup, infraFFNtoCID, allRegulations) {
