@@ -1,4 +1,4 @@
-import { ENV } from "../config/envs";
+import { ENV } from "../config/envs.js";
 export function getItemsFromInfraMapping(infraItemMapping, predicate) {
     const items = [];
     Object.keys(infraItemMapping).forEach((columnGroup) => {

@@ -1,5 +1,5 @@
 import { Item } from "monstaa/dist/classes/Item";
-import { ENV } from "../config/envs";
+import { ENV } from "../config/envs.js";
 
 export function getItemsFromInfraMapping(
   infraItemMapping: Record<string, Record<string, Item>>,

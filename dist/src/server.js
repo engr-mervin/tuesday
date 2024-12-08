@@ -108,9 +108,6 @@ function validateRoundItem(roundFields, infraFFNtoCID) {
     }
 }
 function getRoundFields(roundItem, infraFFNtoCID) {
-    if (!roundItem.cells) {
-        throw new Error(`Round item is not initialized.`);
-    }
     const roundTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Type];
     const roundType = roundTypeCID
         ? roundItem.values[roundTypeCID]
@@ -119,23 +116,23 @@ function getRoundFields(roundItem, infraFFNtoCID) {
     const startDate = startDateCID
         ? roundItem.values[startDateCID]
         : undefined;
-    const endDateCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const endDateCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_End_Date];
     const endDate = endDateCID
         ? roundItem.values[endDateCID]
         : undefined;
-    const emailScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const emailScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Email_Hour];
     const emailScheduleHour = emailScheduleHourCID
         ? roundItem.values[emailScheduleHourCID]
         : undefined;
-    const SMSScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const SMSScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.SMS_Hour];
     const SMSScheduleHour = SMSScheduleHourCID
         ? roundItem.values[SMSScheduleHourCID]
         : undefined;
-    const OMGScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const OMGScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.OMG_Hour];
     const OMGScheduleHour = OMGScheduleHourCID
         ? roundItem.values[OMGScheduleHourCID]
         : undefined;
-    const pushScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
+    const pushScheduleHourCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Push_Hour];
     const pushScheduleHour = pushScheduleHourCID
         ? roundItem.values[pushScheduleHourCID]
         : undefined;
@@ -143,7 +140,7 @@ function getRoundFields(roundItem, infraFFNtoCID) {
     const isOneTime = isOneTimeCID
         ? roundItem.values[isOneTimeCID]
         : undefined;
-    const tysonRoundCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
+    const tysonRoundCID = infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Tyson_Round_ID];
     const tysonRound = tysonRoundCID
         ? roundItem.values[tysonRoundCID]
         : undefined;
@@ -160,8 +157,9 @@ function getRoundFields(roundItem, infraFFNtoCID) {
         isOneTime,
         tysonRound,
     };
-    //End round date can be null if is one time is checked, this will be in inter-validation
+    //INTER: End round date can be null if is one time is checked, this will be in inter-validation
 }
+//NOTE: Here we retrieve values of the campaign itself and process it
 function getCampaignFields(campaignItem, infraFFNtoCID, infraMapping) {
     if (!campaignItem.cells) {
         throw new Error(`Campaign item is not initialized.`);
@@ -180,21 +178,26 @@ function getCampaignFields(campaignItem, infraFFNtoCID, infraMapping) {
     const controlGroup = controlGroupCID
         ? campaignItem.values[controlGroupCID]
         : undefined;
+    //TODO: Verify if this exists in any board
+    const isOneTimeCampaignCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Is_One_Time_Round];
+    const isOneTime = isOneTimeCampaignCID
+        ? campaignItem.values[isOneTimeCampaignCID]
+        : undefined;
     const allRegulations = getItemsFromInfraMapping(infraMapping, (item) => {
-        return (item.values[ENV.INFRA.CIDS.COLUMN_GROUP] ===
-            COLUMN_GROUP.Market);
+        return item.values[ENV.INFRA.CIDS.COLUMN_GROUP] === COLUMN_GROUP.Market;
     });
     const allMarketsCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
+    const allMarketsChecked = campaignItem.values[allMarketsCID];
     const regulations = {};
     for (let i = 0; i < allRegulations.length; i++) {
         const regulation = allRegulations[i];
-        const regulationName = regulation.values[process.env.INFRA_CONFIG_FFN_CID];
-        const regulationCID = regulation.values[process.env.INFRA_CONFIG_COLUMN_ID_CID];
-        const isRegulationChecked = Boolean(campaignItem.values[allMarketsCID] ||
-            campaignItem.values[regulationCID]);
+        const regulationName = regulation.values[ENV.INFRA.CIDS.FFN];
+        const regulationCID = regulation.values[ENV.INFRA.CIDS.COLUMN_ID];
+        const isRegulationChecked = Boolean(allMarketsChecked || campaignItem.values[regulationCID]);
         regulations[regulationName] = isRegulationChecked;
     }
     const statusCID = infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Campaign_Status];
+    //TODO: Validate if status is already created or etc
     const status = statusCID
         ? campaignItem.values[statusCID]
         : undefined;
@@ -223,6 +226,7 @@ function getCampaignFields(campaignItem, infraFFNtoCID, infraMapping) {
         personId,
         theme,
         offer,
+        isOneTime,
     };
 }
 function validateCampaignItem(campaignFields) {
@@ -255,7 +259,6 @@ function validateCampaignItem(campaignFields) {
                 errors.push(`Campaign must have campaign start/end dates.`);
             }
         }
-        //VALIDATE REGULATIONS AND TIERS
         //TODO: FOR DESIGN ERROR HANDLING
         if (Object.keys(campaignFields.regulations).length === 0) {
             errors.push(`Campaign must have a regulation.`);
@@ -264,17 +267,12 @@ function validateCampaignItem(campaignFields) {
             .length === 0) {
             errors.push(`Campaign has no chosen regulation.`);
         }
-        //TODO: Move envs in a module with type safety
         //The basis for requiring tiers in a campaign is the
         //existence of tiersCID record in the infra item...
-        //TODO: Not validation layer check!
         //Optional
         if (campaignFields.tiers !== undefined) {
-            if (typeof campaignFields.tiers !== "string") {
-                throw new ConfigError("Tiers", "INVALID");
-            }
-            const tiersList = campaignFields.tiers.split(",");
-            if (tiersList.length === 0) {
+            //Trim() is not needed here because this is only validation
+            if (!campaignFields.tiers || campaignFields.tiers.length === 0) {
                 errors.push(`Campaign is missing tiers.`);
             }
         }
@@ -373,9 +371,6 @@ function processRoundItems(roundItems, infraFFNtoCID) {
     try {
         const roundErrors = {};
         const roundFieldsObj = {};
-        if (roundItems === undefined) {
-            throw new Error(`Round items missing.`);
-        }
         for (let i = 0; i < roundItems.length; i++) {
             const roundItem = roundItems[i];
             const roundFields = getRoundFields(roundItem, infraFFNtoCID);
@@ -473,22 +468,21 @@ function getThemeItems(themeGroup, infraFFNtoCID, allRegulations) {
     }
     return themeItems;
 }
-function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
+async function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
     const activeRegulations = allRegulations
         .filter((reg) => reg.isChecked)
         .map((reg) => reg.name);
     const commTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Configuration][FRIENDLY_FIELD_NAMES.Configuration_Type];
     const commFieldCID = infraFFNtoCID[PARAMETER_LEVEL.Configuration][FRIENDLY_FIELD_NAMES.Configuration_Field];
     const commRoundCID = infraFFNtoCID[PARAMETER_LEVEL.Configuration][FRIENDLY_FIELD_NAMES.Configuration_Round];
-    if (!configGroup.items) {
+    if (configGroup.items.length === 0) {
         //TODO: Handle no configuration here..
         return [];
     }
     let configItems = [];
-    //Loop over items of group and do an if else to handle
     for (let i = 0; i < configGroup.items.length; i++) {
         const item = configGroup.items[i];
-        if (!item.cells || !item.values) {
+        if (Object.values(item.cells)) {
             //TODO: No cells mean all items have no cells, handle error
             return [];
         }
@@ -499,89 +493,60 @@ function getConfigItems(configGroup, infraFFNtoCID, allRegulations) {
             if ([commTypeCID, commFieldCID, commRoundCID].includes(cell.columnId)) {
                 continue;
             }
-            //TODO: Monsta, add types in cell
-            if (cell.text === "checkbox") {
+            if (cell.type === "checkbox") {
                 segments.push({ name: cell.title, isChecked: Boolean(cell.value) });
             }
         }
-        //TODO: Monsta Make another field: 'values', which outputs the string value.
-        const itemRound = item.cells[commRoundCID].value;
-        const itemType = item.cells[commTypeCID].value;
-        const itemField = item.cells[commFieldCID].value;
-        if (!item.subitems) {
-            //subitems should not be undefined, can be empty, but not undefined.
-            return [];
-        }
-        //TODO: REGION: Refactor this region
-        //TODO: Monsta get columns of a board/subitem board
-        let foundClassificationCID;
-        let foundFieldIdCID;
-        let foundValueCID;
-        let foundFilesCID;
-        //TODO: Workaround to get CIDs
-        for (let j = 0; j < item.subitems.length; j++) {
-            const subitem = item.subitems[j];
-            const rawCells = Object.values(subitem.cells);
-            if (!subitem.cells || rawCells.length === 0) {
-                break;
-            }
-            //Iterate and take the CIDs
-            for (let k = 0; k < rawCells.length; k++) {
-                const cell = rawCells[k];
-                if (cell.title === CONFIGURATION_COLUMN_NAMES.Classification) {
-                    foundClassificationCID = cell.columnId;
-                }
-                else if (cell.title === CONFIGURATION_COLUMN_NAMES.Field_Id) {
-                    foundFieldIdCID = cell.columnId;
-                }
-                else if (cell.title === CONFIGURATION_COLUMN_NAMES.Files) {
-                    foundFilesCID = cell.columnId;
-                }
-                else if (cell.title === CONFIGURATION_COLUMN_NAMES.Value) {
-                    foundValueCID = cell.columnId;
-                }
-            }
-        }
-        //
-        if (!foundClassificationCID || !foundFieldIdCID || !foundValueCID) {
-            //TODO: Fix appropriately
+        const itemRound = item.values[commRoundCID];
+        const itemType = item.values[commTypeCID];
+        const itemField = item.values[commFieldCID];
+        const sBoardId = item.subitems[0].boardId;
+        const sBoard = await mondayClient.getBoard(sBoardId, {
+            includeColumns: true,
+            queryLevel: QueryLevel.Board
+        });
+        if (!sBoard) {
             throw new Error();
         }
-        //Get subitems
+        const columns = sBoard.columns;
+        const classification = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Classification);
+        const fieldId = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Field_Id);
+        const files = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Files);
+        const value = columns.find((col) => col.title === CONFIGURATION_COLUMN_NAMES.Value);
+        if (!classification || !fieldId || !value) {
+            throw new Error(`Missing subitem columns`);
+        }
         let fields = [];
         for (let j = 0; j < item.subitems.length; j++) {
             const subitem = item.subitems[j];
-            if (!subitem.rawCells || !subitem.cells) {
+            if (!subitem.cells) {
                 break;
             }
             const field = {
                 name: subitem.name,
-                classification: subitem.cells[foundClassificationCID].value,
-                fieldId: subitem.cells[foundFieldIdCID].value,
-                value: subitem.cells[foundValueCID].value,
-                files: foundFilesCID
-                    ? subitem.cells[foundFilesCID].value
+                classification: subitem.values[classification.columnId],
+                fieldId: subitem.values[fieldId.columnId],
+                value: subitem.values[value.columnId],
+                files: files
+                    ? subitem.values[files.columnId]
                     : undefined,
             };
             fields.push(field);
         }
-        //END REGION
         const configItem = {
             name: item.name,
             round: itemRound,
             type: itemType,
             fieldName: itemField,
             fields,
+            segments
         };
+        configItems.push(configItem);
     }
+    return configItems;
 }
 function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
     const offerItems = {};
-    if (!offerGroup.items) {
-        //TODO: items can be empty but not undefined
-        //handle error here
-        return {};
-    }
     //TODO: VALIDATE EXISTENCE OF REQUIRED COLUMNS
     const parameterTypeCID = infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Parameter_Type];
     const useAsComCID = infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Use_as_Com];
@@ -593,7 +558,7 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
         const offerItem = offerGroup.items[i];
         const valuesObj = {};
         if (!offerItem.cells) {
-            //handle error
+            //TODO: Handle error
             return {};
         }
         for (let i = 0; i < allRegulations.length; i++) {
@@ -605,7 +570,6 @@ function getOfferItems(offerGroup, infraFFNtoCID, allRegulations) {
             const cell = Object.values(offerItem.cells).find((cell) => cell.title === regulationName);
             valuesObj[regulationName] = cell ? cell.value : null;
         }
-        //TODO: Fix typing of cell value
         offerItems[offerItem.name] = {
             parameterName: offerItem.name,
             bonusFieldName: bonusFieldNameCID
@@ -667,35 +631,18 @@ function processOfferGroup(offerGroup, infraFFNtoCID, allRegulations) {
         };
     }
 }
-function processConfigGroup(configGroup, infraFFNtoCID, allRegulations) {
-    try {
-        const configItems = getConfigItems(configGroup, infraFFNtoCID, allRegulations);
-        const validationResult = validateConfigItems(configItems);
-        if (validationResult.status === "fail") {
-            return validationResult;
-        }
-        else if (validationResult.status === "error") {
-            return validationResult;
-        }
-        return {
-            status: "success",
-            result: configItems,
-        };
-    }
-    catch (err) {
-        return {
-            status: "fail",
-            message: err.message,
-        };
-    }
+function validateConfigItems(configItems) {
+    return {
+        status: "success",
+        data: null,
+    };
 }
-function generateRegulations(regulations, tiers, ab) {
+function generateRegulations(regulations, tiersList, ab) {
     //if tiers is undefined (not declared in infra boards)
     //we will just use the regulations as is.
     //if ab is empty (null) or not declared (undefined), 0 which is validation error, means we turn it off
     const allRegulations = [];
-    if (tiers) {
-        const tiersList = tiers.split(",").map((tier) => tier.trim());
+    if (tiersList) {
         Object.keys(regulations).forEach((regulation) => {
             tiersList.forEach((tier) => {
                 allRegulations.push({
@@ -727,17 +674,19 @@ function generateRegulations(regulations, tiers, ab) {
     }
     return allRegulations;
 }
+async function getInfraBoard() {
+    //Get cache record first if cache miss
+    //Then use monstaa
+    return mondayClient.getBoard(ENV.INFRA.BOARD_ID, {
+        queryLevel: QueryLevel.Cell,
+        subitemLevel: "none",
+    });
+}
 async function importCampaign(webhook) {
     const campaignPID = Number(webhook.event.pulseId);
     const campaignBID = Number(webhook.event.boardId);
-    const friendlyFieldNameCID = process.env.INFRA_CONFIG_FFN_CID;
-    const columnIDCID = process.env.INFRA_CONFIG_COLUMN_ID_CID;
-    const columnGroupCID = process.env.INFRA_CONFIG_PARAMETER_LEVEL_CID;
     const [infraBoard, campaignItem] = await Promise.all([
-        mondayClient.getBoard(process.env.INFRA_BOARD, {
-            queryLevel: QueryLevel.Cell,
-            subitemLevel: "none",
-        }),
+        getInfraBoard(),
         mondayClient.getItem({ itemId: campaignPID }, { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }),
     ]);
     if (!infraBoard) {
@@ -762,7 +711,7 @@ async function importCampaign(webhook) {
     const infraMapping = {};
     infraItem?.subitems?.forEach((subitem) => {
         const FFN = subitem.values[ENV.INFRA.CIDS.FFN];
-        const columnGroup = subitem.values[ENV.INFRA.CIDS.COLUMN_GROUP];
+        const columnGroup = subitem.values[ENV.INFRA.CIDS.PARAMETER_LEVEL];
         infraMapping[columnGroup] = infraMapping[columnGroup] || {};
         infraMapping[columnGroup][FFN] = subitem;
         infraFFNtoCID[columnGroup] = infraFFNtoCID[columnGroup] || {};
@@ -778,7 +727,6 @@ async function importCampaign(webhook) {
         return;
     }
     const roundDetails = processRoundItems(campaignItem.subitems, infraFFNtoCID);
-    //GET theme board id, offer board id, etc...
     const themeBID = infraItem.values[ENV.INFRA.ROOT_CIDS.THEME_BOARD_ID];
     const offerBID = infraItem.values[ENV.INFRA.ROOT_CIDS.OFFER_BOARD_ID];
     const configBID = infraItem.values[ENV.INFRA.ROOT_CIDS.CONFIG_BOARD_ID];
@@ -788,9 +736,6 @@ async function importCampaign(webhook) {
     const tiers = campaignDetails.result.tiers; //Comma-separated
     const ab = campaignDetails.result.ab;
     const allRegulations = generateRegulations(regulations, tiers, ab);
-    //TODO: Add getuser in monsta
-    //TODO: Query injection instead of multiple cases
-    //TODO: Maybe offer batching capabilities to Monsta
     const [themeGroup, offerGroup, configGroup] = await Promise.all([
         getThemeGroup(themeBID, themeName),
         getOfferGroup(offerBID, offerName),
@@ -798,7 +743,7 @@ async function importCampaign(webhook) {
     ]);
     const themeDetails = processThemeGroup(themeGroup, infraFFNtoCID, allRegulations);
     const offerDetails = processOfferGroup(offerGroup, infraFFNtoCID, allRegulations);
-    const configDetails = processConfigGroup(configGroup, infraFFNtoCID);
+    // const configDetails = processConfigGroup(configGroup, infraFFNtoCID);
     if (themeDetails.status === "fail" ||
         offerDetails.status === "fail" ||
         roundDetails.status === "fail") {
