@@ -1,13 +1,10 @@
 export class ConfigError extends Error {
-  public configName: string;
-  public errorType: "MISSING" | "INVALID";
+  public configNames: string[];
   constructor(
-    configName: string,
-    errorType: "MISSING" | "INVALID",
+    configNames: string[],
     message?: string
   ) {
     super(message);
-    this.configName = configName;
-    this.errorType = errorType;
+    this.configNames = configNames;
   }
 }

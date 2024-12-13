@@ -93,7 +93,7 @@ function validateRoundItem(roundFields, infraFFNtoCID) {
         //No need to validate omg,sms,push,email hours because Monday field will always return a valid value
         return errors.length
             ? {
-                status: "error",
+                status: "fail",
                 errors,
             }
             : {
@@ -102,7 +102,7 @@ function validateRoundItem(roundFields, infraFFNtoCID) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -295,7 +295,7 @@ function validateCampaignItem(campaignFields) {
         }
         return errors.length
             ? {
-                status: "error",
+                status: "fail",
                 errors,
             }
             : {
@@ -304,7 +304,7 @@ function validateCampaignItem(campaignFields) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -314,7 +314,7 @@ function validateThemeItems(themeItems) {
         const themeErrors = {};
         return Object.keys(themeErrors).length
             ? {
-                status: "error",
+                status: "fail",
                 errors: themeErrors,
             }
             : {
@@ -323,7 +323,7 @@ function validateThemeItems(themeItems) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -333,7 +333,7 @@ function validateOfferItems(offerItems) {
         const offerErrors = {};
         return Object.keys(offerErrors).length
             ? {
-                status: "error",
+                status: "fail",
                 errors: offerErrors,
             }
             : {
@@ -342,7 +342,7 @@ function validateOfferItems(offerItems) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -375,10 +375,10 @@ function processRoundItems(roundItems, infraFFNtoCID) {
             const roundItem = roundItems[i];
             const roundFields = getRoundFields(roundItem, infraFFNtoCID);
             const result = validateRoundItem(roundFields, infraFFNtoCID);
-            if (result.status === "fail") {
+            if (result.status === "error") {
                 return result;
             }
-            else if (result.status === "error") {
+            else if (result.status === "fail") {
                 roundErrors[roundItem.name] = result.errors;
             }
             else {
@@ -387,7 +387,7 @@ function processRoundItems(roundItems, infraFFNtoCID) {
         }
         return Object.keys(roundErrors).length
             ? {
-                status: "error",
+                status: "fail",
                 errors: roundErrors,
             }
             : {
@@ -397,7 +397,7 @@ function processRoundItems(roundItems, infraFFNtoCID) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -406,10 +406,10 @@ function processCampaignItem(campaignItem, infraFFNtoCID, infraMapping) {
     try {
         const campaignFields = getCampaignFields(campaignItem, infraFFNtoCID, infraMapping);
         const validationResult = validateCampaignItem(campaignFields);
-        if (validationResult.status === "fail") {
+        if (validationResult.status === "error") {
             return validationResult;
         }
-        else if (validationResult.status === "error") {
+        else if (validationResult.status === "fail") {
             return validationResult;
         }
         else {
@@ -422,7 +422,7 @@ function processCampaignItem(campaignItem, infraFFNtoCID, infraMapping) {
     catch (err) {
         console.error(err.stack);
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -598,10 +598,10 @@ function processThemeGroup(themeGroup, infraFFNtoCID, allRegulations) {
     try {
         const themeItems = getThemeItems(themeGroup, infraFFNtoCID, allRegulations);
         const validationResult = validateThemeItems(themeItems);
-        if (validationResult.status === "fail") {
+        if (validationResult.status === "error") {
             return validationResult;
         }
-        else if (validationResult.status === "error") {
+        else if (validationResult.status === "fail") {
             return validationResult;
         }
         return {
@@ -611,7 +611,7 @@ function processThemeGroup(themeGroup, infraFFNtoCID, allRegulations) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -620,10 +620,10 @@ function processOfferGroup(offerGroup, infraFFNtoCID, allRegulations) {
     try {
         const offerItems = getOfferItems(offerGroup, infraFFNtoCID, allRegulations);
         const validationResult = validateOfferItems(offerItems);
-        if (validationResult.status === "fail") {
+        if (validationResult.status === "error") {
             return validationResult;
         }
-        else if (validationResult.status === "error") {
+        else if (validationResult.status === "fail") {
             return validationResult;
         }
         return {
@@ -633,7 +633,7 @@ function processOfferGroup(offerGroup, infraFFNtoCID, allRegulations) {
     }
     catch (err) {
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -648,9 +648,9 @@ async function processConfigGroup(configGroup, infraFFNtoCID, allRegulations) {
     try {
         const configItems = await getConfigItems(configGroup, infraFFNtoCID, allRegulations);
         // const validationResult = validateConfigItems(configItems);
-        // if (validationResult.status === "fail") {
+        // if (validationResult.status === "error") {
         //   return validationResult;
-        // } else if (validationResult.status === "error") {
+        // } else if (validationResult.status === "fail") {
         //   return validationResult;
         // }
         return {
@@ -661,7 +661,7 @@ async function processConfigGroup(configGroup, infraFFNtoCID, allRegulations) {
     catch (err) {
         console.error(err.stack);
         return {
-            status: "fail",
+            status: "error",
             message: err.message,
         };
     }
@@ -747,11 +747,11 @@ async function importCampaign(webhook) {
         infraFFNtoCID[columnGroup][FFN] = String(subitem.values[ENV.INFRA.CIDS.COLUMN_ID]);
     });
     const campaignDetails = processCampaignItem(campaignItem, infraFFNtoCID, infraMapping);
-    if (campaignDetails.status === "error") {
+    if (campaignDetails.status === "fail") {
         //TODO: generate report
         return;
     }
-    else if (campaignDetails.status === "fail") {
+    else if (campaignDetails.status === "error") {
         //TODO: error handling here
         return;
     }
@@ -773,15 +773,15 @@ async function importCampaign(webhook) {
     const themeDetails = processThemeGroup(themeGroup, infraFFNtoCID, allRegulations);
     const offerDetails = processOfferGroup(offerGroup, infraFFNtoCID, allRegulations);
     const configDetails = await processConfigGroup(configGroup, infraFFNtoCID, allRegulations);
-    if (themeDetails.status === "fail" ||
-        offerDetails.status === "fail" ||
-        roundDetails.status === "fail") {
+    if (themeDetails.status === "error" ||
+        offerDetails.status === "error" ||
+        roundDetails.status === "error") {
         //generate report
         return;
     }
-    else if (themeDetails.status === "error" ||
-        offerDetails.status === "error" ||
-        roundDetails.status === "error") {
+    else if (themeDetails.status === "fail" ||
+        offerDetails.status === "fail" ||
+        roundDetails.status === "fail") {
         //error handling here
         return;
     }

@@ -47,7 +47,7 @@ export const CAMPAIGN_STATUSES = {
     Campaign_Created: { Id: 5, Name: "Campaign Created" },
     Test_Pending_Approval: { Id: 6, Name: "Test Pending Approval" },
     Approved_For_Production: { Id: 7, Name: "Approved For Prod" },
-    Error: { Id: 8, Name: "Error" },
+    Error: { Id: 8, Name: "fail" },
     In_Prod: { Id: 9, Name: "In Prod" },
     Completed: { Id: 10, Name: "Completed" },
     Launched: { Id: 11, Name: "Launched" },

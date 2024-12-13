@@ -35,6 +35,14 @@ export const FRIENDLY_FIELD_NAMES = {
   Configuration_Type: "Communication Type",
   Configuration_Field: "Communication Field",
   Configuration_Round: "Communication Round",
+
+  //Action Flags
+  Import_Parameters: "Import Parameters",
+  Exclude_Default_Parameters: "Exclude Default Parameters",
+  Connect_Reminders: "Connect Reminders",
+  Delete_Segments: "Delete Segments",
+  Is_One_Time: "Is One Time",
+  Cancel_Rounds: "Cancel Rounds"
 };
 
 export const ROUND_TYPES = {
@@ -42,6 +50,48 @@ export const ROUND_TYPES = {
   Reminder_1: "Reminder 1",
   Reminder_2: "Reminder 2",
 };
+
+export const EMPTY_SELECTS_ENUM = {
+  Offer: "Choose Offer",
+  Theme: "Choose Theme",
+}
+
+export const LIMITS = {
+  Max_Param_Length: 199,
+  Min_Param_Length: 3,
+  Max_Segments: 80,
+  Max_Params: 30,
+}
+
+export const PARAM_TYPES = {
+  Cashback_Percent_Amount: 'Cashback % Amount',
+  Cashback_Cap_Amount: 'Cashback Cap Amount',
+  Cashback_Final_Amount: 'Cashback Final Amount',
+  Times: 'Times',
+  Free_Amount: 'Free Amount',
+  Max_Free_Amount: 'MaxFreeAmount'
+}
+
+export const BONUS_TYPES = {
+  FPV: "fpv",
+  FPS: "fps",
+  FIM: "fim"
+}
+
+export const OFFER_TYPES = {
+  Game_List: "Game List",
+  Sport_Name: "Sport_Name",
+  Tournament_Name: "Tournament_Name",
+  Event_ID: "Event ID",
+  External_Plan_ID: "External Plan ID",
+  Winning_Offering_Type: "Winning Offering Type",
+  Bonus_Offer_Type: "Bonus Offer Type",
+  Offer_Game_Group: "Offer Game Group",
+  Offer_Package_ID: "Offer Package ID",
+  Expiration_Date: "Expiration Date",
+  Number_of_Tickets: "Number of Tickets",
+
+}
 
 export const CAMPAIGN_STATUSES = {
   Draft: { Id: 1, Name: "Draft" },
@@ -51,7 +101,7 @@ export const CAMPAIGN_STATUSES = {
   Campaign_Created: { Id: 5, Name: "Campaign Created" },
   Test_Pending_Approval: { Id: 6, Name: "Test Pending Approval" },
   Approved_For_Production: { Id: 7, Name: "Approved For Prod" },
-  Error: { Id: 8, Name: "Error" },
+  Error: { Id: 8, Name: "fail" },
   In_Prod: { Id: 9, Name: "In Prod" },
   Completed: { Id: 10, Name: "Completed" },
   Launched: { Id: 11, Name: "Launched" },
