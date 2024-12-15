@@ -80,3 +80,40 @@ export function isNumberInRange(
   return true;
 }
 
+
+export function isIntegerInRange(
+  number: any,
+  minInclusive: number = -Infinity,
+  maxInclusive: number = +Infinity,
+  allowNegativeOne: boolean = false,
+  allowZero: boolean = false
+): boolean {
+  const numberCast = Number(number);
+  
+  if(!Number.isInteger(numberCast)){
+    return false;
+  }
+
+  if (
+    (allowNegativeOne && numberCast === -1) ||
+    (allowZero && numberCast === 0)
+  ) {
+    return true;
+  }
+
+  if (
+    (!allowNegativeOne && numberCast === -1) ||
+    (!allowZero && numberCast === 0)
+  ) {
+    return false;
+  }
+  if (numberCast > maxInclusive) {
+    return false;
+  }
+  if (numberCast < minInclusive) {
+    return false;
+  }
+
+  return true;
+}
+

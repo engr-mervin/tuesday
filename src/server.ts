@@ -16,7 +16,6 @@ import {
   CONFIGURATION_COLUMN_NAMES,
   EMPTY_SELECTS_ENUM,
   LIMITS,
-  OFFER_PARAM_TYPES,
   PARAM_TYPES,
   OFFER_TYPES,
   BONUS_TYPES,
@@ -30,11 +29,20 @@ import {
 import { ConfigError } from "./errors/configError.js";
 import {
   isInteger,
+  isIntegerInRange,
   isNumberInRange,
   isValidNumber,
 } from "./helpers/validatorFunctions.js";
 import { ENV } from "./config/envs.js";
 import { Board } from "monstaa/dist/classes/Board.js";
+import {
+  offerValidationRules,
+  validateInterOfferItems,
+  validateOfferItem,
+  validateOfferItems,
+} from "./validators/offerValidators.js";
+import { OfferItem } from "./types/offerTypes.js";
+import { validateParameter } from "./validators/parameterValidators.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -127,7 +135,7 @@ async function getOfferGroup(
 }
 
 //Fail means
-type ValidationResult<T = undefined, U = string[]> =
+export type ValidationResult<T = undefined, U = string[]> =
   | (T extends undefined
       ? {
           status: "success";
@@ -589,7 +597,14 @@ function validateThemeItems(
   themeItems: ThemeParameter[]
 ): ValidationResult<ThemeParameter[], Record<string, string[]>> {
   try {
-    const errors = validateParameters(themeItems);
+    const errors: Record<string, string[]> = {};
+    for (const themeItem of themeItems) {
+      const name = themeItem.parameterName;
+      const paramErrors = validateParameter(themeItem);
+      if (paramErrors.length) {
+        errors[name] = [...paramErrors];
+      }
+    }
 
     return Object.keys(errors).length
       ? {
@@ -599,149 +614,6 @@ function validateThemeItems(
       : {
           status: "success",
           data: themeItems,
-        };
-  } catch (err) {
-    return {
-      status: "error",
-      message: (err as Error).message,
-    };
-  }
-}
-
-function validateParameters(
-  parameters: {
-    parameterName: string;
-    values: { [key: string]: string | null };
-    parameterType: string;
-  }[]
-) {
-  const errors: Record<string, string[]> = {};
-
-  for (const param of parameters) {
-    //Validate name
-    const name = param.parameterName;
-    if (param.parameterName.length > LIMITS.Max_Param_Length) {
-      errors[name] = errors[name] || [];
-      errors[name].push(`Parameter name exceeds max length.`);
-    }
-    if (param.parameterName.length < LIMITS.Min_Param_Length) {
-      errors[name] = errors[name] || [];
-      errors[name].push(`Parameter name is below min length.`);
-    }
-
-    //NOTE: Unlike campaigns, the granularity here is item, not cell, so if a validation for an item does not depend
-    //on another item, we put it here, otherwise in the inter-validation
-    for (const seg in param.values) {
-      const value = param.values[seg];
-      if (value !== null && PARAM_REGEX.test(value)) {
-        errors[name] = errors[name] || [];
-        errors[name].push(
-          `Parameter value must not contain special characters (|, Enter, New-Line).`
-        );
-      }
-      if (
-        [
-          PARAM_TYPES.Cashback_Percent_Amount,
-          PARAM_TYPES.Cashback_Cap_Amount,
-          PARAM_TYPES.Cashback_Final_Amount,
-          PARAM_TYPES.Times,
-          PARAM_TYPES.Free_Amount,
-          PARAM_TYPES.Max_Free_Amount,
-        ].includes(param.parameterType) &&
-        !isValidNumber(value, 0, 99) //TODO: Verify if this is digits or range
-      ) {
-        errors[name] = errors[name] || [];
-        errors[name].push(`Parameter value should be between 0 - 99.`);
-      }
-    }
-  }
-  return errors;
-}
-
-//NOTE: Return null if valid or error message...
-const offerValidationRules = {
-  [OFFER_TYPES.External_Plan_ID]: (
-    value: string,
-    market: string,
-    offerItem: OfferItem
-  ) => {
-    if (value.length === 0 || !isInteger(value)) {
-      return `${offerItem.parameterName}-${market} must be a valid integer.`;
-    }
-    return null;
-  },
-
-  [OFFER_TYPES.Winning_Offering_Type]: (
-    value: string,
-    market: string,
-    offerItem: OfferItem
-  ) => {
-    if (isNumberInRange(value, 0)) {
-      return `${offerItem.parameterName}-${market} must be a positive integer or -1`;
-    }
-
-    if (
-      offerItem.bonusType &&
-      ![BONUS_TYPES.FPS, BONUS_TYPES.FPV].includes(offerItem.bonusType)
-    ) {
-      return `${offerItem.parameterName}-${market} is only available for free play voucher and free play spin bonuses.`;
-    }
-
-    return null;
-  },
-
-  [OFFER_TYPES.Bonus_Offer_Type]: (
-    value: string,
-    market: string,
-    offerItem: OfferItem
-  ) => {
-    if (isNumberInRange(value, 0)) {
-      return `${offerItem.parameterName}-${market} must be a positive integer or -1`;
-    }
-
-    if (
-      offerItem.bonusType &&
-      ![BONUS_TYPES.FPS, BONUS_TYPES.FIM].includes(offerItem.bonusType)
-    ) {
-      return `${offerItem.parameterName}-${market} is only available for immediate bonuses.`;
-    }
-  },
-};
-
-function validateOfferItems(
-  offerItems: OfferItem[]
-): ValidationResult<undefined, Record<string, string[]>> {
-  try {
-    const offerParams = offerItems.filter((offerItem) => offerItem.useAsCom);
-    const errors = validateParameters(offerParams);
-
-    for (const offerItem of offerItems) {
-      const name = offerItem.parameterName;
-      if (offerItem.bonusFieldName && offerItem.bonusType) {
-        //If bonus fields are defined, validate that it should not be empty
-        const bonusDefined =
-          offerItem.bonusFieldName !== undefined &&
-          offerItem.bonusType !== undefined;
-        if (bonusDefined) {
-          if (!offerItem.bonusFieldName) {
-            errors[name] = errors[name] || [];
-            errors[name].push(`Bonus field name missing.`);
-          }
-
-          if (!offerItem.bonusType) {
-            errors[name] = errors[name] || [];
-            errors[name].push(`Bonus type missing.`);
-          }
-        }
-      }
-    }
-    return Object.keys(errors).length
-      ? {
-          status: "fail",
-          data: errors,
-        }
-      : {
-          status: "success",
         };
   } catch (err) {
     return {
@@ -862,18 +734,6 @@ interface ThemeParameter {
     [key: string]: string | null;
   };
 }
-
-interface OfferItem {
-  parameterName: string;
-  useAsCom: boolean | undefined;
-  parameterType: string;
-  bonusType: string | undefined;
-  bonusFieldName: string | undefined;
-  values: {
-    [key: string]: string | null;
-  };
-}
-
 //Union of types with the type as
 //discriminant
 //Will include neptune/pacman/promocode/promotion page/banner/etc
