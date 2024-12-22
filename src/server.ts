@@ -5,44 +5,34 @@ import { QueryLevel } from "monstaa/dist/types/types.js";
 import { MondayWebHook } from "./types/mondayWebhook.js";
 import { Item } from "monstaa/dist/classes/Item.js";
 import { Group } from "monstaa/dist/classes/Group.js";
-import { CAMPAIGN_NAME_REGEX, PARAM_REGEX } from "./constants/REGEXES.js";
+import { CAMPAIGN_NAME_REGEX } from "./constants/REGEXES.js";
 import {
-  CAMPAIGN_STATUSES,
   PARAMETER_LEVEL,
   FRIENDLY_FIELD_NAMES,
   ROUND_TYPES,
   COLUMN_GROUP,
-  CONFIGURATION_TYPES,
   CONFIGURATION_COLUMN_NAMES,
   EMPTY_SELECTS_ENUM,
-  LIMITS,
-  PARAM_TYPES,
-  OFFER_TYPES,
-  BONUS_TYPES,
+  COMPLEX_OFFER_TYPES,
 } from "./constants/INFRA.js";
 import { addDays, getToday } from "./helpers/dateFunctions.js";
-import {
-  getCIDFromInfraMapping,
-  getItemFromInfraMapping,
-  getItemsFromInfraMapping,
-} from "./helpers/infraFunctions.js";
+import { getItemsFromInfraMapping } from "./helpers/infraFunctions.js";
 import { ConfigError } from "./errors/configError.js";
-import {
-  isInteger,
-  isIntegerInRange,
-  isNumberInRange,
-  isValidNumber,
-} from "./helpers/validatorFunctions.js";
+import { isInteger } from "./helpers/validatorFunctions.js";
 import { ENV } from "./config/envs.js";
-import { Board } from "monstaa/dist/classes/Board.js";
 import {
-  offerValidationRules,
-  validateInterOfferItems,
-  validateOfferItem,
-  validateOfferItems,
+  validateOfferBonuses,
+  validateOfferParameters,
+  validateOfferSegments,
 } from "./validators/offerValidators.js";
-import { OfferItem } from "./types/offerTypes.js";
+import {
+  BonusOfferItem,
+  GetOfferResult,
+  NonBonusOfferItem,
+} from "./types/offerTypes.js";
 import { validateParameter } from "./validators/parameterValidators.js";
+import { validateCampaignItem } from "./validators/campaignValidators.js";
+import { CampaignFields, Field } from "./types/campaignTypes.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -215,37 +205,6 @@ function validateRoundItem(
   }
 }
 
-type Field<T> = T | undefined | null;
-type RequiredField<T> = T | null; //Means it should be configured
-
-interface CampaignFields {
-  name: Field<string>;
-  startDate: Field<string>;
-  endDate: Field<string>;
-  ab: Field<number>;
-  tiers: Field<string[]>;
-  controlGroup: Field<number>;
-  regulations: Record<string, boolean>;
-  status: Field<string>;
-  personId: Field<string>;
-  theme: Field<string>;
-  offer: Field<string>;
-  isOneTime: Field<boolean>;
-}
-interface ValidatedCampaignFields {
-  name: Field<string>;
-  startDate: Field<string>;
-  endDate: Field<string>;
-  ab: Field<number>;
-  tiers: Field<string[]>;
-  controlGroup: Field<number>;
-  regulations: Record<string, boolean>;
-  status: Field<string>;
-  personId: Field<string>;
-  theme: Field<string>;
-  offer: Field<string>;
-  isOneTime: Field<boolean>;
-}
 
 interface RoundFields {
   name: Field<string>;
@@ -490,108 +449,6 @@ function getBoardActionFlags(infraItem: Item) {
   };
 }
 
-function validateCampaignItem(
-  campaignFields: CampaignFields
-): ValidationResult<ValidatedCampaignFields> {
-  try {
-    const errors = [];
-
-    if (!campaignFields.name) {
-      errors.push(`Campaign name is not defined.`);
-    } else if (CAMPAIGN_NAME_REGEX.test(campaignFields.name)) {
-      errors.push(
-        `Campaign name must not contain special characters. Name: ${campaignFields.name}`
-      );
-    }
-
-    //VALIDATE DATES
-    if (!campaignFields.startDate || !campaignFields.endDate) {
-      errors.push(`Campaign must have campaign start/end dates.`);
-    } else {
-      const today = getToday();
-      const latestStartDate = addDays(today, 60);
-
-      const startDateObj = new Date(campaignFields.startDate);
-      const endDateObj = new Date(campaignFields.endDate);
-
-      //Actual start will be 1 day in the future.
-      startDateObj.setDate(startDateObj.getDate() + 1);
-
-      if (startDateObj > latestStartDate) {
-        errors.push(`Campaign start date needs to be within the next 60 days.`);
-      }
-      if (startDateObj < today) {
-        errors.push(`Campaign start date cannot be in the past.`);
-      }
-      if (startDateObj.getTime() === endDateObj.getTime()) {
-        errors.push(`Campaign must have campaign start/end dates.`);
-      }
-    }
-
-    //TODO: FOR DESIGN ERROR HANDLING
-    if (Object.keys(campaignFields.regulations).length === 0) {
-      errors.push(`Campaign must have a regulation.`);
-    }
-
-    if (
-      Object.values(campaignFields.regulations).filter((isChecked) => isChecked)
-        .length === 0
-    ) {
-      errors.push(`Campaign has no chosen regulation.`);
-    }
-
-    //The basis for requiring tiers in a campaign is the
-    //existence of tiersCID record in the infra item...
-
-    //Optional
-    if (campaignFields.tiers !== undefined) {
-      //Trim() is not needed here because this is only validation
-      if (!campaignFields.tiers || campaignFields.tiers.length === 0) {
-        errors.push(`Campaign is missing tiers.`);
-      }
-    }
-
-    if (campaignFields.ab !== undefined) {
-      if (
-        campaignFields.ab === null ||
-        isNaN(campaignFields.ab) ||
-        campaignFields.ab > 90 ||
-        campaignFields.ab < 10
-      ) {
-        errors.push(`Campaign's A/B value must be between 10-90 (inclusive).`);
-      }
-    }
-
-    if (campaignFields.controlGroup !== undefined) {
-      //Allow 10-90 and also empty value (0)
-      if (
-        !isInteger(campaignFields.controlGroup) ||
-        (campaignFields.controlGroup !== 0 &&
-          (campaignFields.controlGroup < 10 ||
-            campaignFields.controlGroup > 90))
-      ) {
-        errors.push(
-          `Campaign control group value must be an integer between 10-90 (inclusive) or 0.`
-        );
-      }
-    }
-
-    return errors.length
-      ? {
-          status: "fail",
-          data: errors,
-        }
-      : {
-          status: "success",
-          data: campaignFields as ValidatedCampaignFields,
-        };
-  } catch (err) {
-    return {
-      status: "error",
-      message: (err as Error).message,
-    };
-  }
-}
 
 function validateThemeItems(
   themeItems: ThemeParameter[]
@@ -818,6 +675,7 @@ async function getConfigItems(
     .filter((reg) => reg.isChecked)
     .map((reg) => reg.name);
 
+  const missingConfigs: string[] = [];
   const commTypeCID =
     infraFFNtoCID[PARAMETER_LEVEL.Configuration][
       FRIENDLY_FIELD_NAMES.Configuration_Type
@@ -831,11 +689,27 @@ async function getConfigItems(
       FRIENDLY_FIELD_NAMES.Configuration_Round
     ];
 
+  //TODO: Verify if these are all required..
+  if (!commTypeCID) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Type);
+  }
+
+  if (!commFieldCID) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Field);
+  }
+
+  if (!commRoundCID) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Round);
+  }
+
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-configuration", missingConfigs);
+  }
+
   if (configGroup.items.length === 0) {
-    //TODO: Handle no configuration here..
     return [];
   }
-  let configItems: ConfigItem[] = [];
+  const configItems: ConfigItem[] = [];
 
   for (let i = 0; i < configGroup.items.length; i++) {
     const item = configGroup.items[i];
@@ -858,7 +732,7 @@ async function getConfigItems(
     const itemType = item.values[commTypeCID] as string;
     const itemField = item.values[commFieldCID] as string;
 
-    //If item has no subitems, we add a partial config item
+    //If item has no subitems, we add a partial config item without 'fields' field
     if (item.subitems.length === 0) {
       const configItem = {
         name: item.name,
@@ -883,6 +757,7 @@ async function getConfigItems(
 
     const columns = sBoard.columns;
 
+    const missingColumns = [];
     const classification = columns.find(
       (col) => col.title === CONFIGURATION_COLUMN_NAMES.Classification
     );
@@ -896,8 +771,18 @@ async function getConfigItems(
       (col) => col.title === CONFIGURATION_COLUMN_NAMES.Value
     );
 
-    if (!classification || !fieldId || !value) {
-      throw new Error(`Missing required subitem columns`);
+    if (!classification) {
+      missingColumns.push(CONFIGURATION_COLUMN_NAMES.Classification);
+    }
+    if (!fieldId) {
+      missingColumns.push(CONFIGURATION_COLUMN_NAMES.Field_Id);
+    }
+    if (!value) {
+      missingColumns.push(CONFIGURATION_COLUMN_NAMES.Value);
+    }
+
+    if (missingColumns.length) {
+      throw new ConfigError("missing-column", missingColumns);
     }
 
     let fields: ConfigItemField[] = [];
@@ -909,9 +794,9 @@ async function getConfigItems(
       }
       const field: ConfigItemField = {
         name: subitem.name,
-        classification: subitem.values[classification.columnId] as string,
-        fieldId: subitem.values[fieldId.columnId] as string,
-        value: subitem.values[value.columnId] as string,
+        classification: subitem.values[classification!.columnId] as string,
+        fieldId: subitem.values[fieldId!.columnId] as string,
+        value: subitem.values[value!.columnId] as string,
         files: files ? (subitem.values[files.columnId] as string) : undefined,
       };
 
@@ -937,10 +822,9 @@ function getOfferItems(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): OfferItem[] {
-  const offerItems: OfferItem[] = [];
-
-  //TODO: VALIDATE EXISTENCE OF REQUIRED COLUMNS
+): GetOfferResult {
+  const activeRegulations = allRegulations.filter((reg) => reg.isChecked);
+  const missingConfigs = [];
   const parameterTypeCID =
     infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Parameter_Type];
   const useAsComCID =
@@ -950,48 +834,97 @@ function getOfferItems(
   const bonusFieldNameCID =
     infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Bonus_Field_Name];
 
-  //we loop over regulations and get the value.
-  //value is null if reg name is not found
-  for (let i = 0; i < offerGroup.items.length; i++) {
-    const offerItem = offerGroup.items[i];
-    const valuesObj: Record<string, string | null> = {};
-
-    if (!offerItem.cells) {
-      //TODO: Handle error
-      return [];
-    }
-
-    for (let i = 0; i < allRegulations.length; i++) {
-      const regulation = allRegulations[i];
-      const regulationName = regulation.name;
-
-      //We look for cell with the same title as regulation name,
-      //If we cant find it, we set a default value of null,
-      //if yes we populate valuesObj with the value
-      const cell = Object.values(offerItem.cells).find(
-        (cell) => cell.title === regulationName
-      );
-      valuesObj[regulationName] = cell ? (cell.value as string) : null;
-    }
-
-    //NOTE: Only the checked markets are added here
-    offerItems.push({
-      parameterName: offerItem.name,
-      bonusFieldName: bonusFieldNameCID
-        ? (offerItem.values[bonusFieldNameCID] as string)
-        : undefined,
-      bonusType: bonusTypeCID
-        ? (offerItem.values[bonusTypeCID] as string)
-        : undefined,
-      useAsCom: useAsComCID
-        ? (offerItem.values[useAsComCID] as boolean)
-        : undefined,
-      parameterType: offerItem.values[parameterTypeCID] as string,
-      values: valuesObj,
-    });
+  if (!parameterTypeCID) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Parameter_Type);
+  }
+  if (!bonusTypeCID && bonusFieldNameCID) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Bonus_Type);
+  }
+  if (bonusTypeCID && !bonusFieldNameCID) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Bonus_Field_Name);
   }
 
-  return offerItems;
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-configuration", missingConfigs);
+  }
+
+  const isBonus = bonusTypeCID && bonusFieldNameCID;
+
+  if (isBonus) {
+    const offerItems: BonusOfferItem[] = [];
+    for (let i = 0; i < offerGroup.items.length; i++) {
+      const offerItem = offerGroup.items[i];
+      const valuesObj: Record<string, string> = {};
+      for (let i = 0; i < activeRegulations.length; i++) {
+        const regulation = activeRegulations[i];
+        const regulationName = regulation.name;
+
+        const cell = Object.values(offerItem.cells).find(
+          (cell) => cell.title === regulationName
+        );
+
+        //This happens if a market chosen in campaign and is in configuration,
+        //but not declared on the boards or the cell id has mismatch
+        if (!cell) {
+          throw new ConfigError("missing-column", regulationName);
+        }
+        valuesObj[regulationName] = cell.value as string;
+      }
+
+      //NOTE: Only the checked markets are added here
+      const bonusType = offerItem.values[bonusTypeCID] as string;
+      offerItems.push({
+        parameterName: offerItem.name,
+        bonusFieldName: offerItem.values[bonusFieldNameCID] as string,
+        bonusType,
+        useAsCom: useAsComCID
+          ? (offerItem.values[useAsComCID] as boolean)
+          : undefined,
+        parameterType: offerItem.values[parameterTypeCID] as string,
+        values: valuesObj,
+        isFragment: Object.keys(COMPLEX_OFFER_TYPES).includes(bonusType),
+      });
+    }
+    return {
+      isBonus: true,
+      offers: offerItems,
+    };
+  } else {
+    const offerItems: NonBonusOfferItem[] = [];
+    for (let i = 0; i < offerGroup.items.length; i++) {
+      const offerItem = offerGroup.items[i];
+      const valuesObj: Record<string, string> = {};
+
+      for (let i = 0; i < activeRegulations.length; i++) {
+        const regulation = activeRegulations[i];
+        const regulationName = regulation.name;
+
+        const cell = Object.values(offerItem.cells).find(
+          (cell) => cell.title === regulationName
+        );
+        if (!cell) {
+          throw new ConfigError("missing-column", regulationName);
+        }
+        valuesObj[regulationName] = cell.value as string;
+      }
+
+      offerItems.push({
+        parameterName: offerItem.name,
+        bonusFieldName: undefined,
+        bonusType: undefined,
+        useAsCom: useAsComCID
+          ? (offerItem.values[useAsComCID] as boolean)
+          : undefined,
+        parameterType: offerItem.values[parameterTypeCID] as string,
+        values: valuesObj,
+        isFragment: false,
+      });
+    }
+    return {
+      isBonus: false,
+      offers: offerItems,
+    };
+  }
 }
 
 function processThemeGroup(
@@ -1015,27 +948,46 @@ function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): ValidationResult<OfferItem[], Record<string, string[]>> {
+): ValidationResult<
+  BonusOfferItem[] | NonBonusOfferItem[],
+  Record<string, string[]>
+> {
   try {
-    const offerItems = getOfferItems(offerGroup, infraFFNtoCID, allRegulations);
+    const { offers, isBonus } = getOfferItems(
+      offerGroup,
+      infraFFNtoCID,
+      allRegulations
+    );
 
-    //Validate each offer item
-    const validationResult = validateOfferItems(offerItems);
-
-    if (validationResult.status !== "success") {
-      return validationResult;
+    const paramValidateResult = validateOfferParameters(offers);
+    if (paramValidateResult.status !== "success") {
+      return paramValidateResult;
     }
 
-    //Validate offer items against each other
-    const interValidateResult = validateInterOfferItems(offerItems);
+    //isBonus = is if bonus field name and bonus type exists in monday boards
+    if (isBonus) {
+      const offerValidateResult = validateOfferBonuses(offers);
 
-    if (interValidateResult.status !== "success") {
-      return interValidateResult;
+      if (offerValidateResult.status !== "success") {
+        return offerValidateResult;
+      }
+      //Validate offer items against each other
+      const segmentValidateResult = validateOfferSegments(
+        offerValidateResult.data
+      );
+      if (segmentValidateResult.status !== "success") {
+        return segmentValidateResult;
+      }
+
+      return {
+        status: "success",
+        data: segmentValidateResult.data,
+      };
     }
 
     return {
       status: "success",
-      data: offerItems,
+      data: offers,
     };
   } catch (err) {
     return {
@@ -1045,10 +997,11 @@ function processOfferGroup(
   }
 }
 
-function validateConfigItems(configItems: ConfigItem[]) {
+function validateConfigItems(
+  configItems: ConfigItem[]
+): ValidationResult<undefined, Record<string, string[]>> {
   return {
     status: "success",
-    data: null,
   };
 }
 
@@ -1063,7 +1016,7 @@ async function processConfigGroup(
       infraFFNtoCID,
       allRegulations
     );
-    // const validationResult = validateConfigItems(configItems);
+    const validationResult = validateConfigItems(configItems);
 
     // if (validationResult.status === "error") {
     //   return validationResult;

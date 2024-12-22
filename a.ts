@@ -12,4 +12,13 @@ TODO:
 7. Save final campaign JSON to SQL DB
 
 
+
+TODO: 
+1. Validate Free bet, etc
+2. Validate Configs
+3. Change bonus fragment to be an int for order
+4. Handle cases where the whole segment has no values (declared in boards but will not be used by campaign)
+maybe this is handled by allRegulations
+if so, we need to handle 
+=>
 */

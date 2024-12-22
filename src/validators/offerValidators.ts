@@ -5,18 +5,22 @@ import {
   isNumberInRange,
 } from "../helpers/validatorFunctions";
 import { ValidationResult } from "../server";
-import { OfferItem } from "../types/offerTypes";
+import {
+  BonusOfferItem,
+  NonBonusOfferItem,
+  ValidatedBonusOfferItem,
+} from "../types/offerTypes";
 import { validateParameter } from "./parameterValidators";
 
 //NOTE: Return null if valid or error message...
 export const offerValidationRules: Record<
   string,
-  (v: string, market: string, offerItem: OfferItem) => null | string
+  (v: string, market: string, offerItem: BonusOfferItem) => null | string
 > = {
   [OFFER_TYPES.External_Plan_ID]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     if (value.length === 0 || !isInteger(value)) {
       return `Value must be a valid integer.`;
@@ -27,7 +31,7 @@ export const offerValidationRules: Record<
   [OFFER_TYPES.Winning_Offering_Type]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
@@ -46,7 +50,7 @@ export const offerValidationRules: Record<
   [OFFER_TYPES.Bonus_Offer_Type]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
@@ -64,7 +68,7 @@ export const offerValidationRules: Record<
   [OFFER_TYPES.Offer_Game_Group]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
@@ -85,7 +89,7 @@ export const offerValidationRules: Record<
   [OFFER_TYPES.Offer_Package_ID]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     if (!isIntegerInRange(value, -1, 5)) {
       return `Value must be a positive integer up to 5 or -1`;
@@ -96,7 +100,7 @@ export const offerValidationRules: Record<
   [OFFER_TYPES.Expiration_Date]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     //Hierarchy of delimiters - [.] [/] [-]
     const delimiter = value.includes(".")
@@ -129,7 +133,7 @@ export const offerValidationRules: Record<
   [OFFER_TYPES.Number_of_Tickets]: (
     value: string,
     market: string,
-    offerItem: OfferItem
+    offerItem: BonusOfferItem
   ) => {
     const validNums = [1, 2, 3, 4, 5, 10];
     if (!isInteger(value)) {
@@ -145,55 +149,42 @@ export const offerValidationRules: Record<
   },
 };
 
-export function validateOfferItem(offerItem: OfferItem): string[] {
+export function validateBonus(offerItem: BonusOfferItem): string[] {
   const errors = [];
-  //If bonus fields are defined, validate that it should not be empty
-  if (
-    offerItem.bonusFieldName !== undefined &&
-    offerItem.bonusType !== undefined
-  ) {
-    if (offerItem.bonusFieldName === "") {
-      errors.push(`Bonus field name missing.`);
-    }
-    if (offerItem.bonusType === "") {
-      errors.push(`Bonus type missing.`);
-    }
-    if (errors.length) {
-      return errors;
-    }
-    const validator = offerValidationRules[offerItem.bonusType];
-    for (const market in offerItem.values) {
-      const value = offerItem.values[market];
-      if (value === null) {
-        errors.push(`${market} value is missing.`);
-        continue;
-      }
-
-      const error = validator(value, market, offerItem);
-      if (error !== null) {
-        errors.push(`${market} value is invalid: ${error}.`);
-      }
-    }
+  if (offerItem.bonusFieldName === "") {
+    errors.push(`Bonus field name missing.`);
+  }
+  if (!Object.keys(OFFER_TYPES).includes(offerItem.bonusType)) {
+    errors.push(`Bonus type not supported or missing.`);
+  }
+  if (errors.length) {
     return errors;
   }
+  const validator = offerValidationRules[offerItem.bonusType];
+  for (const market in offerItem.values) {
+    const value = offerItem.values[market];
 
-  return [];
+    const error = validator(value, market, offerItem);
+    if (error !== null) {
+      errors.push(`${market} value is invalid: ${error}.`);
+    }
+  }
+  return errors;
 }
 
-export function validateOfferItems(
-  offerItems: OfferItem[]
+export function validateOfferParameters(
+  offerItems: BonusOfferItem[] | NonBonusOfferItem[]
 ): ValidationResult<undefined, Record<string, string[]>> {
   try {
     const errors: Record<string, string[]> = {};
 
     for (const offerItem of offerItems) {
       const name = offerItem.parameterName;
-      const offerErrors = validateOfferItem(offerItem);
       const paramErrors = offerItem.useAsCom
         ? validateParameter(offerItem)
         : [];
-      if (offerErrors.length || paramErrors.length) {
-        errors[name] = [...offerErrors, ...paramErrors];
+      if (paramErrors.length) {
+        errors[name] = paramErrors;
       }
     }
     return Object.keys(errors).length
@@ -212,43 +203,101 @@ export function validateOfferItems(
   }
 }
 
-export function validateInterOfferItems(
-  offerItems: OfferItem[]
-): ValidationResult<undefined, Record<string, string[]>> {
-  const errors: Record<string, string[]> = {};
-  for (const offerItem of offerItems) {
-    const itemErrors = [];
-    const name = offerItem.parameterName;
+export function validateOfferBonuses(
+  offerItems: BonusOfferItem[]
+): ValidationResult<ValidatedBonusOfferItem[], Record<string, string[]>> {
+  try {
+    const errors: Record<string, string[]> = {};
+
+    for (const offerItem of offerItems) {
+      const name = offerItem.parameterName;
+      const offerErrors = validateBonus(offerItem);
+      if (offerErrors.length) {
+        errors[name] = offerErrors;
+      }
+    }
+    return Object.keys(errors).length
+      ? {
+          status: "fail",
+          data: errors,
+        }
+      : {
+          status: "success",
+          data: offerItems as ValidatedBonusOfferItem[],
+        };
+  } catch (err) {
+    return {
+      status: "error",
+      message: (err as Error).message,
+    };
   }
 }
 
-const offerInterValidationRules = {
-  [OFFER_TYPES.Offer_Game_Group]: (
-    offerItem: OfferItem,
-    offerItems: OfferItem[]
-  ) => {
-    if (offerItem.bonusType === "Offer Game Group") {
-      const offeringTypeOffer = offerItems.find(
-        (item) =>
-          item.bonusType &&
-          [
-            OFFER_TYPES.Bonus_Offer_Type,
-            OFFER_TYPES.Winning_Offering_Type,
-          ].includes(item.bonusType)
-      );
-      if (offeringTypeOffer === undefined) {
-        return `Offer type record is required.`;
-      }
+export function validateOfferSegments(
+  offerItems: ValidatedBonusOfferItem[]
+): ValidationResult<ValidatedBonusOfferItem[], Record<string, string[]>> {
+  const errors: Record<string, string[]> = {};
 
-      for (const market in offerItem.values) {
-        const value = offeringTypeOffer.values[market];
-        if (!value) {
-          return `Offer type value is missing for ${market}`;
+  //First transform offerItems to a segment: bonus type: bonuses schema for easier validation..
+  const segmentBonuses: { [key: string]: { [key: string]: string | null } } =
+    {};
+
+  for (const segment in offerItems[0].values) {
+    const values: Record<string, string | null> = {};
+    for (const offerItem of offerItems) {
+      values[offerItem.bonusType] = offerItem.values[segment];
+    }
+    segmentBonuses[segment] = values;
+  }
+
+  const bonusTypesSet = new Set();
+  for(const offerItem of offerItems){
+    if(bonusTypesSet.has(offerItem.bonusType)){
+      errors.all = [`Duplicate bonus ${offerItem.bonusType} found`];
+      continue;
+    }
+    bonusTypesSet.add(offerItem.bonusType);
+  }
+
+  for (const segment in segmentBonuses) {
+    const segmentErrors = [];
+    const bonuses = segmentBonuses[segment];
+    const values = Object.values(segmentBonuses[segment]);
+    if (
+      values.some((bonus) => bonus === null) &&
+      !values.every((bonus) => bonus === null)
+    ) {
+      segmentErrors.push(`Incomplete values in some bonuses.`);
+    }
+
+    const gameGroupValue = bonuses[OFFER_TYPES.Offer_Game_Group];
+    if (gameGroupValue !== undefined) {
+      const offerTypeValue = bonuses[OFFER_TYPES.Winning_Offering_Type] || bonuses[OFFER_TYPES.Bonus_Offer_Type];
+      if (offerTypeValue === undefined) {
+        segmentErrors.push(`Offer type record is required.`);
+      } else {
+        if (!offerTypeValue) {
+          segmentErrors.push(`Offer type value is missing for ${segment}`);
         }
-        if (Number(value) !== 1 && Number(offerItem.values[market]) !== -1) {
-          return `Offer game group is only available for Offer Type = 1 (Casino Only)`;
+        if (Number(gameGroupValue) !== 1 && Number(offerTypeValue) !== -1) {
+          segmentErrors.push(
+            `Offer game group is only available for Offer Type = 1 (Casino Only)`
+          );
         }
       }
     }
-  },
-};
+
+    errors[segment] = segmentErrors;
+  }
+
+  return errors.length
+    ? {
+        status: "success",
+        data: offerItems,
+      }
+    : {
+        status: "fail",
+        data: errors,
+      };
+}
+

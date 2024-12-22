@@ -80,8 +80,8 @@ export const BONUS_TYPES = {
 
 export const OFFER_TYPES = {
   Game_List: "Game List",
-  Sport_Name: "Sport_Name",
-  Tournament_Name: "Tournament_Name",
+  Sport_Name: "Sport Name",
+  Tournament_Name: "Tournament Name",
   Event_ID: "Event ID",
   External_Plan_ID: "External Plan ID",
   Winning_Offering_Type: "Winning Offering Type",
@@ -90,7 +90,21 @@ export const OFFER_TYPES = {
   Offer_Package_ID: "Offer Package ID",
   Expiration_Date: "Expiration Date",
   Number_of_Tickets: "Number of Tickets",
+} as const;
 
+export const COMPLEX_OFFER_TYPES = {
+  "Free Bet 1": 1,
+  "Free Bet 2": 2,
+  "Free Bet 3": 3,
+  "Free Bet 4": 4,
+  "Spectate Free Bet 1": 1,
+  "Spectate Free Bet 2": 2,
+  "Spectate Free Bet 3": 3,
+  "Spectate Free Bet 4": 4,
+  "TRT 1": 1,
+  "TRT 2": 2,
+  "TRT 3": 3,
+  "TRT 4": 4,
 }
 
 export const CAMPAIGN_STATUSES = {
