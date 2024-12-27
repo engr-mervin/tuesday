@@ -11,9 +11,18 @@ export interface CampaignFields {
   theme: Field<string>;
   offer: Field<string>;
   isOneTime: Field<boolean>;
+  populationFilters: Record<
+    string,
+    {
+      value: string;
+      type: string;
+    }
+  >;
 }
 export type Field<T> = T | undefined | null;
 export type RequiredField<T> = T | null; //Means it should be configured
+
+export type Round = "Intro" | "Reminder 1" | "Reminder 2" | "Reminder 3";
 
 export interface ValidatedCampaignFields {
   name: Field<string>;

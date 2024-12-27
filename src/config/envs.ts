@@ -14,6 +14,7 @@ export const ENV = {
             PARAMETER_LEVEL: String(process.env.INFRA_PARAMETER_LEVEL_CID),
             FFN: String(process.env.INFRA_FFN_CID),
             COLUMN_ID: String(process.env.INFRA_COLUMN_ID_CID),
+            COLUMN_TYPE: String(process.env.INFRA_COLUMN_TYPE_CID),
         }
     }
 }

@@ -144,6 +144,7 @@ export const CONFIGURATION_TYPES = {
     Promotion_Text: "Promotion Text"
 }
 
+
 export const COLUMN_GROUP = {
     Market: "Market",
     Additional_Data: "Additional Data",

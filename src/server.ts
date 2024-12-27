@@ -33,6 +33,8 @@ import {
 import { validateParameter } from "./validators/parameterValidators.js";
 import { validateCampaignItem } from "./validators/campaignValidators.js";
 import { CampaignFields, Field } from "./types/campaignTypes.js";
+import { ConfigItem, ConfigItemField } from "./types/configTypes.js";
+import { validateConfigItems } from "./validators/configValidators.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -205,7 +207,6 @@ function validateRoundItem(
   }
 }
 
-
 interface RoundFields {
   name: Field<string>;
   roundType: Field<string>;
@@ -256,6 +257,7 @@ function getRoundFields(
     ? (roundItem.values[endDateCID] as string)
     : undefined;
 
+  //If empty string, use the config board...
   const emailScheduleHourCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Email_Hour];
 
@@ -315,6 +317,12 @@ function getRoundFields(
 }
 
 //NOTE: Here we retrieve values of the campaign itself and process it
+//TODO: Handle pop filters
+
+//Undefined value for a field means two things -
+//Either the CID is not declared in the Config Board,
+//Or it is configured in board but the CID is not found in the actual board..
+//For required configs, we handle both at the GET level, by throwing config error
 function getCampaignFields(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
@@ -365,6 +373,36 @@ function getCampaignFields(
   const allMarketsCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.All_Markets];
   const allMarketsChecked = campaignItem.values[allMarketsCID] as boolean;
+
+  const allPopFilters = getItemsFromInfraMapping(infraMapping, (item) => {
+    return (
+      item.values[ENV.INFRA.CIDS.COLUMN_GROUP] ===
+      COLUMN_GROUP.Population_Filter
+    );
+  });
+
+  const populationFilters: Record<
+    string,
+    {
+      value: string;
+      type: string;
+    }
+  > = {};
+  for (let i = 0; i < allPopFilters.length; i++) {
+    const popFilter = allPopFilters[i];
+
+    const popFilterName = popFilter.values[ENV.INFRA.CIDS.FFN] as string;
+    const popFilterCID = popFilter.values[ENV.INFRA.CIDS.COLUMN_ID] as string;
+    const popFilterColType = popFilter.values[
+      ENV.INFRA.CIDS.COLUMN_TYPE
+    ] as string;
+
+    const popFilterValue = campaignItem.values[popFilterCID] as string;
+    populationFilters[popFilterName] = {
+      value: popFilterValue,
+      type: popFilterColType,
+    };
+  }
 
   const regulations: Record<string, boolean> = {};
   for (let i = 0; i < allRegulations.length; i++) {
@@ -425,6 +463,7 @@ function getCampaignFields(
     theme,
     offer,
     isOneTime,
+    populationFilters,
   };
 }
 
@@ -448,7 +487,6 @@ function getBoardActionFlags(infraItem: Item) {
       true,
   };
 }
-
 
 function validateThemeItems(
   themeItems: ThemeParameter[]
@@ -591,30 +629,6 @@ interface ThemeParameter {
     [key: string]: string | null;
   };
 }
-//Union of types with the type as
-//discriminant
-//Will include neptune/pacman/promocode/promotion page/banner/etc
-interface ConfigItem {
-  name: string;
-  round: string;
-  type: string;
-  fieldName: string;
-  segments: Record<string, string>;
-  //Optional for record with no subitems
-  fields?: ConfigItemField[];
-}
-
-//TODO:
-//MondayOptionalField add undefined
-//MondayRequiredField (string | null)
-interface ConfigItemField {
-  name: string;
-  classification: string;
-  fieldId: string;
-  value: string;
-  //Only this field is optional
-  files: string | undefined;
-}
 
 //NOTE: Can throw error for not existing required config keys
 function getThemeItems(
@@ -717,10 +731,6 @@ async function getConfigItems(
     const segments: Record<string, string> = {};
     const cells = Object.values(item.cells);
 
-    if (cells.length === 0) {
-      //TODO: No cells means board does not have columns
-      return [];
-    }
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (activeRegulations.includes(cell.title)) {
@@ -728,9 +738,24 @@ async function getConfigItems(
       }
     }
 
+    //These fields can still be undefined if the column is not declared..
     const itemRound = item.values[commRoundCID] as string;
     const itemType = item.values[commTypeCID] as string;
     const itemField = item.values[commFieldCID] as string;
+
+    if (itemRound === undefined) {
+      missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Round);
+    }
+    if (itemType === undefined) {
+      missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Type);
+    }
+    if (itemField === undefined) {
+      missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Field);
+    }
+
+    if (missingConfigs.length) {
+      throw new ConfigError("missing-column", missingConfigs);
+    }
 
     //If item has no subitems, we add a partial config item without 'fields' field
     if (item.subitems.length === 0) {
@@ -995,14 +1020,6 @@ function processOfferGroup(
       message: (err as Error).message,
     };
   }
-}
-
-function validateConfigItems(
-  configItems: ConfigItem[]
-): ValidationResult<undefined, Record<string, string[]>> {
-  return {
-    status: "success",
-  };
 }
 
 async function processConfigGroup(
