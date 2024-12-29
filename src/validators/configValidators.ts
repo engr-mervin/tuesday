@@ -11,7 +11,6 @@ import {
   FIELDS_PACMAN_CONFIG,
   FIELDS_PROMOCODE_CONFIG,
   FIELDS_PUSH,
-  FIELDS_Push,
   FIELDS_REMOVE_NEPTUNE_ID,
   FIELDS_SEGMENT_FILTER,
   FIELDS_SMS,
@@ -20,14 +19,11 @@ import { BANNER_REGEX, HOLOGRAM_REGEX } from "../constants/REGEXES";
 import {
   isCommaSeparatedListOfIntegers,
   isFloatInRange,
-  isInsideClosedListLax,
   isInsideClosedListStrict,
-  isInteger,
   isIntegerInRange,
   isIntegerNonEmpty,
   isNumberInRange,
   isStringOfLength,
-  isValidBannerId,
   isValidTime,
 } from "../helpers/validatorFunctions";
 import { ValidationResult } from "../server";
@@ -497,6 +493,7 @@ export const configValidationRules: Record<
     //     }
     //   }
     // }
+    return errors;
   },
 
   [CONFIGURATION_TYPES.Email]: (configItem: ConfigItem) => {
@@ -601,7 +598,7 @@ export const configValidationRules: Record<
     if (FIELDS_NEPTUNE_ID.Neptune_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, -1)) {
-          errors.push(`Value should a positive  integer or -1.`);
+          errors.push(`Value should a positive integer or -1.`);
         }
       }
     }
