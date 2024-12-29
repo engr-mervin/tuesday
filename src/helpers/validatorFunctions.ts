@@ -1,3 +1,5 @@
+import { BANNER_REGEX } from "../constants/REGEXES";
+
 //Will return true for empty strings
 export function isInteger(number: string | number | null): number is number {
   return Number.isInteger(Number(number));
@@ -6,41 +8,6 @@ export function isInteger(number: string | number | null): number is number {
 //Will return false for empty strings
 export function isIntegerNonEmpty(str: string): boolean {
   return Number.isInteger(Number.parseInt(str, 10));
-}
-
-export function isValidNumber(
-  number: any,
-  minDigits: number,
-  maxDigits: number,
-  allowNegativeOne: boolean = false,
-  allowZero: boolean = false
-): boolean {
-  const numberCast = Number(number);
-  if (isNaN(numberCast)) {
-    return false;
-  }
-
-  if (
-    (allowNegativeOne && numberCast === -1) ||
-    (allowZero && numberCast === 0)
-  ) {
-    return true;
-  }
-
-  if (
-    (!allowNegativeOne && numberCast === -1) ||
-    (!allowZero && numberCast === 0)
-  ) {
-    return false;
-  }
-  if (numberCast >= 10 ** maxDigits) {
-    return false;
-  }
-  if (numberCast < 10 ** (minDigits - 1)) {
-    return false;
-  }
-
-  return true;
 }
 
 export function isCommaSeparatedListOfIntegers(input: string) {
@@ -163,8 +130,7 @@ export function isIntegerInRange(
   number: any,
   minInclusive: number = -Infinity,
   maxInclusive: number = +Infinity,
-  allowNegativeOne: boolean = false,
-  allowZero: boolean = false
+  allowList: number[] = []
 ): boolean {
   const numberCast = Number(number);
 
@@ -172,19 +138,10 @@ export function isIntegerInRange(
     return false;
   }
 
-  if (
-    (allowNegativeOne && numberCast === -1) ||
-    (allowZero && numberCast === 0)
-  ) {
+  if (allowList.includes(numberCast)) {
     return true;
   }
 
-  if (
-    (!allowNegativeOne && numberCast === -1) ||
-    (!allowZero && numberCast === 0)
-  ) {
-    return false;
-  }
   if (numberCast > maxInclusive) {
     return false;
   }
@@ -195,29 +152,22 @@ export function isIntegerInRange(
   return true;
 }
 
+export function isValidBannerId(value: string) {
+  return BANNER_REGEX.GUID.test(value);
+}
 
 export function isFloatInRange(
   number: any,
   minInclusive: number = -Infinity,
   maxInclusive: number = +Infinity,
-  allowNegativeOne: boolean = false,
-  allowZero: boolean = false
+  allowList: number[] = []
 ): boolean {
   const numberCast = Number(number);
 
-  if (
-    (allowNegativeOne && numberCast === -1) ||
-    (allowZero && numberCast === 0)
-  ) {
+  if (allowList.includes(numberCast)) {
     return true;
   }
 
-  if (
-    (!allowNegativeOne && numberCast === -1) ||
-    (!allowZero && numberCast === 0)
-  ) {
-    return false;
-  }
   if (numberCast > maxInclusive) {
     return false;
   }

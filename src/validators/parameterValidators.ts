@@ -1,6 +1,6 @@
 import { LIMITS, PARAM_TYPES } from "../constants/INFRA";
 import { PARAM_REGEX } from "../constants/REGEXES";
-import { isValidNumber } from "../helpers/validatorFunctions";
+import { isIntegerInRange } from "../helpers/validatorFunctions";
 
 export function validateParameter(parameter: {
   parameterName: string;
@@ -39,7 +39,7 @@ export function validateParameter(parameter: {
         PARAM_TYPES.Free_Amount,
         PARAM_TYPES.Max_Free_Amount,
       ].includes(parameter.parameterType) &&
-      !isValidNumber(value, 0, 99) //TODO: Verify if this is digits or range
+      !isIntegerInRange(value, 0, 99) //TODO: Verify if this is digits or range
     ) {
       errors.push(`Parameter value should be between 0 - 99.`);
     }

@@ -144,6 +144,69 @@ export const CONFIGURATION_TYPES = {
   Promotion_Image: "Promotion Image",
   Promotion_CTA: "Promotion CTA",
   Promotion_Text: "Promotion Text",
+  Promotion_Config: "Promotion Config",
+
+  OMG: "Omg",
+  Email: "Email",
+  SMS: "SMS",
+  Push: "Push",
+  Personal_Hologram: "Personal Hologram",
+
+  Segment_Filter: "Segment Filter",
+
+  Neptune: "Neptune",
+  Neptune_Opt_In: "Neptune Opt-In",
+  Remove_Neptune: "Remove Neptune",
+};
+
+export const FIELDS_BANNER = {
+  Banner_Schedule_End_Hour: "banner_scheduleEndHour",
+  Banner_Schedule_Start_Hour: "banner_scheduleStartHour",
+  Banner_Duration_Start_Day: "banner_durationStartDay",
+  Banner_Duration_End_Day: "banner_durationEndDay",
+};
+
+export const FIELDS_EMAIL = {
+  Email_Template_ID: "email_templateId",
+  Email_Schedule_Hour: "email_scheduleHour",
+};
+
+export const FIELDS_OMG = {
+  OMG_Template_ID: "omg_templateId",
+  OMG_Schedule_Hour: "omg_scheduleHour",
+};
+export const FIELDS_PUSH = {
+  Push_Template_ID: "push_templateId",
+  Push_Schedule_Hour: "push_scheduleHour",
+};
+export const FIELDS_SMS = {
+  SMS_Template_ID: "sms_templateId",
+  SMS_Schedule_Hour: "sms_scheduleHour",
+};
+export const FIELDS_NEPTUNE_ID = {
+  Neptune_ID: "neptune_id",
+};
+export const FIELDS_NEPTUNE_OPT_IN_ID = {
+  Neptune_Opt_In_ID: "neptuneOptin_id",
+};
+export const FIELDS_REMOVE_NEPTUNE_ID = {
+  Neptune_Remove_Neptune_ID: "removeNeptune_id",
+};
+
+export const FIELDS_SEGMENT_FILTER = {
+  Cashback_Total_Bet_Seg: "cashbackTotalBetSeg",
+  Cashback_Base_Sum: "cashbackBaseSum",
+}
+
+export const FIELDS_HOLOGRAM = {
+  Casino_Hologram_ID: "casinoHologramID",
+  Poker_Hologram_ID: "pokerHologramID",
+  Triple_Seven_Hologram_ID: "tripleSevenHologramID",
+  Sport_Hologram_ID: "sportHologramID",
+  Duration_Start_Day: "durationStartDay",
+  Duration_End_Day: "durationEndDay",
+  Schedule_Start_Hour: "scheduleStartHour",
+  Schedule_End_Hour: "scheduleEndHour",
 };
 
 export const FIELDS_PROMOCODE_CONFIG = {

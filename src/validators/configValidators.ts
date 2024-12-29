@@ -1,10 +1,22 @@
 import {
   ALL_CONFIG_CLASSIFICATIONS,
   CONFIGURATION_TYPES,
+  FIELDS_BANNER,
+  FIELDS_EMAIL,
+  FIELDS_HOLOGRAM,
   FIELDS_NEPTUNE_CONFIG,
+  FIELDS_NEPTUNE_ID,
+  FIELDS_NEPTUNE_OPT_IN_ID,
+  FIELDS_OMG,
   FIELDS_PACMAN_CONFIG,
   FIELDS_PROMOCODE_CONFIG,
+  FIELDS_PUSH,
+  FIELDS_Push,
+  FIELDS_REMOVE_NEPTUNE_ID,
+  FIELDS_SEGMENT_FILTER,
+  FIELDS_SMS,
 } from "../constants/INFRA";
+import { BANNER_REGEX, HOLOGRAM_REGEX } from "../constants/REGEXES";
 import {
   isCommaSeparatedListOfIntegers,
   isFloatInRange,
@@ -15,6 +27,7 @@ import {
   isIntegerNonEmpty,
   isNumberInRange,
   isStringOfLength,
+  isValidBannerId,
   isValidTime,
 } from "../helpers/validatorFunctions";
 import { ValidationResult } from "../server";
@@ -402,6 +415,251 @@ export const configValidationRules: Record<
       }
     }
 
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Neptune_Bind]: (configItem: ConfigItem) => {
+    //NOTE: Intervalidation of checking if value exists in neptune config.
+    //No validation here anymore.
+    return [];
+  },
+  [CONFIGURATION_TYPES.Banner]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+    if (fieldName.toLowerCase().includes("id")) {
+      for (const value of values) {
+        if (!BANNER_REGEX.GUID.test(value)) {
+          errors.push(`The Banner ID should be in 8-4-4-4-12 format only.`);
+        }
+      }
+    }
+    if (
+      [
+        FIELDS_BANNER.Banner_Schedule_Start_Hour,
+        FIELDS_BANNER.Banner_Schedule_End_Hour,
+      ].includes(fieldName)
+    ) {
+      for (const value of values) {
+        if (!isValidTime(value)) {
+          errors.push(`Value should be in HH:MM format.`);
+        }
+      }
+    }
+
+    if (FIELDS_BANNER.Banner_Duration_Start_Day === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 0, 1)) {
+          errors.push(`Value should be either 0 or 1.`);
+        }
+      }
+    }
+
+    if (FIELDS_BANNER.Banner_Duration_End_Day === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 1, 99)) {
+          errors.push(`Value should from 1-99.`);
+        }
+      }
+    }
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Personal_Hologram]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if ((FIELDS_HOLOGRAM.Duration_Start_Day = fieldName)) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 0, 1)) {
+          errors.push(`Value should be either 0 or 1.`);
+        }
+      }
+    }
+    if (FIELDS_HOLOGRAM.Duration_End_Day == fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 1, 99)) {
+          errors.push(`Value should from 1-99.`);
+        }
+      }
+    }
+
+    // if (
+    //   [
+    //     FIELDS_HOLOGRAM.Casino_Hologram_ID,
+    //     FIELDS_HOLOGRAM.Poker_Hologram_ID,
+    //     FIELDS_HOLOGRAM.Triple_Seven_Hologram_ID,
+    //     FIELDS_HOLOGRAM.Sport_Hologram_ID,
+    //   ].includes(fieldName)
+    // ) {
+    //   for (const value of values) {
+    //     if (!HOLOGRAM_REGEX.test(value)) {
+    //       errors.push(`Value should only contain digits and letters.`);
+    //     }
+    //   }
+    // }
+  },
+
+  [CONFIGURATION_TYPES.Email]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_EMAIL.Email_Template_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 10_000_000, 99_999_999, [-1])) {
+          errors.push(`Value should be 8 digits or -1.`);
+        }
+      }
+    }
+
+    if (FIELDS_EMAIL.Email_Schedule_Hour === fieldName) {
+      for (const value of values) {
+        if (!isValidTime(value)) {
+          errors.push(`Value should be in HH:MM format.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+  [CONFIGURATION_TYPES.OMG]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_OMG.OMG_Template_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 10_000, 99_999, [-1])) {
+          errors.push(`Value should be 5 digits or -1.`);
+        }
+      }
+    }
+
+    if (FIELDS_OMG.OMG_Schedule_Hour === fieldName) {
+      for (const value of values) {
+        if (!isValidTime(value)) {
+          errors.push(`Value should be in HH:MM format.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Push]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_PUSH.Push_Template_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 1, 99_999, [-1])) {
+          errors.push(`Value should be 1-5 digits or -1.`);
+        }
+      }
+    }
+
+    if (FIELDS_PUSH.Push_Schedule_Hour === fieldName) {
+      for (const value of values) {
+        if (!isValidTime(value)) {
+          errors.push(`Value should be in HH:MM format.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  [CONFIGURATION_TYPES.SMS]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_SMS.SMS_Template_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, 1, 99_999, [-1])) {
+          errors.push(`Value should be 1-5 digits or -1.`);
+        }
+      }
+    }
+
+    if (FIELDS_SMS.SMS_Schedule_Hour === fieldName) {
+      for (const value of values) {
+        if (!isValidTime(value)) {
+          errors.push(`Value should be in HH:MM format.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+
+  [CONFIGURATION_TYPES.Neptune]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_NEPTUNE_ID.Neptune_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, -1)) {
+          errors.push(`Value should a positive  integer or -1.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Remove_Neptune]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_REMOVE_NEPTUNE_ID.Neptune_Remove_Neptune_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, -1)) {
+          errors.push(`Value should a positive integer or -1.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Neptune_Opt_In]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (FIELDS_NEPTUNE_OPT_IN_ID.Neptune_Opt_In_ID === fieldName) {
+      for (const value of values) {
+        if (!isIntegerInRange(value, -1)) {
+          errors.push(`Value should a positive integer or -1.`);
+        }
+      }
+    }
+
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Segment_Filter]: (configItem: ConfigItem) => {
+    const { fieldName, segments } = configItem;
+    const errors = [];
+    const values = Object.values(segments);
+
+    if (
+      [
+        FIELDS_SEGMENT_FILTER.Cashback_Base_Sum,
+        FIELDS_SEGMENT_FILTER.Cashback_Total_Bet_Seg,
+      ].includes(fieldName)
+    ) {
+      for (const value of values) {
+        const [minVal, maxVal] = value.split("-");
+        if (!isIntegerInRange(minVal, 0) || !isIntegerInRange(maxVal, 0)) {
+          errors.push(`Value should be in the format XXX-YYY.`);
+        }
+
+        if (minVal >= maxVal) {
+          errors.push(`Upper bound greater than lower bound.`);
+        }
+      }
+    }
     return errors;
   },
 };
