@@ -5,7 +5,7 @@ import { isValidNumber } from "../helpers/validatorFunctions";
 export function validateParameter(parameter: {
   parameterName: string;
   values: { [key: string]: string | null };
-  parameterType: string;
+  parameterType?: string;
 }): string[] {
   const errors = [];
   //Validate name
@@ -17,16 +17,20 @@ export function validateParameter(parameter: {
     errors.push(`Parameter name is below min length.`);
   }
 
-  //NOTE: Unlike campaigns, the granularity here is item, not cell, so if a validation for an item does not depend
-  //on another item, we put it here, otherwise in the inter-validation
   for (const seg in parameter.values) {
     const value = parameter.values[seg];
+
+    if (value === "") {
+      errors.push(`
+        Parameter value for segment ${seg} can not be empty.`);
+    }
     if (value !== null && PARAM_REGEX.test(value)) {
       errors.push(
-        `Parameter value must not contain special characters (|, Enter, New-Line).`
+        `Parameter value for segment ${seg} must not contain special characters (|, Enter, New-Line).`
       );
     }
     if (
+      parameter.parameterType &&
       [
         PARAM_TYPES.Cashback_Percent_Amount,
         PARAM_TYPES.Cashback_Cap_Amount,

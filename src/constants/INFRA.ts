@@ -26,7 +26,9 @@ export const FRIENDLY_FIELD_NAMES = {
   Is_One_Time_Round: "Is One Time",
   Tyson_Round_ID: "Tyson Round ID",
   Campaign_Status: "Campaign Status",
-  Parameter_Type: "Parameter Type",
+  Offer_Parameter_Type: "Parameter Type",
+  Theme_Parameter_Type: "Parameter Type",
+  Theme_Communication_Type: "Communication Type",
   Bonus_Type: "Bonus Type",
   Bonus_Field_Name: "Bonus Field Name",
   Use_as_Com: "Use as Com",
@@ -42,7 +44,7 @@ export const FRIENDLY_FIELD_NAMES = {
   Connect_Reminders: "Connect Reminders",
   Delete_Segments: "Delete Segments",
   Is_One_Time: "Is One Time",
-  Cancel_Rounds: "Cancel Rounds"
+  Cancel_Rounds: "Cancel Rounds",
 };
 
 export const ROUND_TYPES = {
@@ -54,29 +56,29 @@ export const ROUND_TYPES = {
 export const EMPTY_SELECTS_ENUM = {
   Offer: "Choose Offer",
   Theme: "Choose Theme",
-}
+};
 
 export const LIMITS = {
   Max_Param_Length: 199,
   Min_Param_Length: 3,
   Max_Segments: 80,
   Max_Params: 30,
-}
+};
 
 export const PARAM_TYPES = {
-  Cashback_Percent_Amount: 'Cashback % Amount',
-  Cashback_Cap_Amount: 'Cashback Cap Amount',
-  Cashback_Final_Amount: 'Cashback Final Amount',
-  Times: 'Times',
-  Free_Amount: 'Free Amount',
-  Max_Free_Amount: 'MaxFreeAmount'
-}
+  Cashback_Percent_Amount: "Cashback % Amount",
+  Cashback_Cap_Amount: "Cashback Cap Amount",
+  Cashback_Final_Amount: "Cashback Final Amount",
+  Times: "Times",
+  Free_Amount: "Free Amount",
+  Max_Free_Amount: "MaxFreeAmount",
+};
 
 export const BONUS_TYPES = {
   FPV: "fpv",
   FPS: "fps",
-  FIM: "fim"
-}
+  FIM: "fim",
+};
 
 export const OFFER_TYPES = {
   Game_List: "Game List",
@@ -105,7 +107,7 @@ export const COMPLEX_OFFER_TYPES = {
   "TRT 2": 2,
   "TRT 3": 3,
   "TRT 4": 4,
-}
+};
 
 export const CAMPAIGN_STATUSES = {
   Draft: { Id: 1, Name: "Draft" },
@@ -134,26 +136,77 @@ export const PARAMETER_LEVEL = {
 };
 
 export const CONFIGURATION_TYPES = {
-    Promocode_Config: "Promocode Config",
-    Neptune_Config: "Neptune Config",
-    Pacman_Config: "Pacman Config",
-    Neptune_Bind: "Neptune Bind",
-    Banner: "Banner",
-    Promotion_Image: "Promotion Image",
-    Promotion_CTA: "Promotion CTA",
-    Promotion_Text: "Promotion Text"
-}
+  Promocode_Config: "Promocode Config",
+  Neptune_Config: "Neptune Config",
+  Pacman_Config: "Pacman Config",
+  Neptune_Bind: "Neptune Bind",
+  Banner: "Banner",
+  Promotion_Image: "Promotion Image",
+  Promotion_CTA: "Promotion CTA",
+  Promotion_Text: "Promotion Text",
+};
 
+export const FIELDS_PROMOCODE_CONFIG = {
+  Template_ID: "templateId",
+  Duration_Days: "durationDays",
+  Bonus_Percentage: "bonusPercentage",
+  Games: "games",
+  Email_Parameter: "emailParams",
+  OMG_Parameter: "omgParams",
+};
+
+export const FIELDS_NEPTUNE_CONFIG = {
+  Campaign_Template: "campaignTemplate",
+  Rule_Template: "ruleTemplate",
+  Neptune_Type: "neptuneType",
+  Neptune_Duration: "neptuneDuration",
+  Into_Neptune: "intoNeptune",
+  Duration_Start_Day: "durationStartDay",
+  Duration_Start_Hour: "durationStartHour",
+  Duration_End_Day: "durationEndDay",
+  Duration_End_Hour: "durationEndHour",
+  Rule_Completed: "ruleCompleted",
+  Condition_Value: "conditionValue",
+  Grant_Pacman: "grantPacman",
+  Filter_Games_List: "filter_gamesList", //comma-sep
+  Filter_Game_Groups: "filter_gameGroups", //comma-sep
+  Filter_Casino_Bet_Amount: "filter_casinoBetAmount", //num
+  Filter_Sport_Bet_Amount: "filter_sportBetAmount", //num
+  Filter_Sport_Bet_Odds: "filter_sportBetOdds", //num
+  Filter_Combination_Bet_Odds: "filter_combinationBetOdds", //num
+  Filter_Spectate_Sport_Tournament: "filter_spectateSportTournament", //comma-sep
+  Filter_Spectate_Event_ID: "filter_spectateEventId", //comma-sep
+  Filter_Spectate_Sport_Type: "filter_spectateSportType", //comma-sep
+  Filter_Game_Categories: "filter_gameCategories", //comma-sep
+  Filter_Number_Of_Legs: "filter_numberOfLegs", //comma-sep
+};
+
+export const FIELDS_PACMAN_CONFIG = {
+  Promo_Templates: "promoTemplates",
+  Promo_Description: "promoDescription",
+  Bonus_Description: "bonusDesc",
+  Duration_Days: "durationDays",
+  Bonus_Percentage: "bonusPercentage",
+  Games: "games",
+  Email_Parameter: "emailParams",
+  OMG_Parameter: "omgParams",
+  Company: "company",
+};
+
+export const ALL_CONFIG_CLASSIFICATIONS = {
+  Email_Parameter: "Email Parameter",
+  OMG_Parameter: "OMG Parameter",
+};
 
 export const COLUMN_GROUP = {
-    Market: "Market",
-    Additional_Data: "Additional Data",
-    Population_Filter: "Population Filter",
-    None: "",
-}
+  Market: "Market",
+  Additional_Data: "Additional Data",
+  Population_Filter: "Population Filter",
+  None: "",
+};
 export const CONFIGURATION_COLUMN_NAMES = {
-    Classification: "Classification",
-    Field_Id: "Field_Id",
-    Value: "Value",
-    Files: "Files",
-}
+  Classification: "Classification",
+  Field_Id: "Field_Id",
+  Value: "Value",
+  Files: "Files",
+};

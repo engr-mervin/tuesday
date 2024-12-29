@@ -634,26 +634,37 @@ interface ThemeParameter {
 function getThemeItems(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
-  allRegulations: Regulation[]
+  activeRegulations: Regulation[]
 ): ThemeParameter[] {
   const themeItems: ThemeParameter[] = [];
 
-  if (!themeGroup.items) {
-    return [];
+  const parameterTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Theme][
+      FRIENDLY_FIELD_NAMES.Theme_Parameter_Type
+    ];
+  const communicationTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Theme][
+      FRIENDLY_FIELD_NAMES.Theme_Communication_Type
+    ];
+
+  const missingConfigs: string[] = [];
+  if (parameterTypeCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Theme_Parameter_Type);
+  }
+  if (communicationTypeCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Theme_Communication_Type);
   }
 
-  const parameterTypeCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Theme][FRIENDLY_FIELD_NAMES.Parameter_Type];
-  const communicationTypeCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Theme][FRIENDLY_FIELD_NAMES.Parameter_Type];
-
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-configuration", missingConfigs);
+  }
   //we loop over regulations and get the value.
   //value is null if reg name is not found
   for (let i = 0; i < themeGroup.items.length; i++) {
     const themeItem = themeGroup.items[i];
     const valuesObj: Record<string, string | null> = {};
-    for (let i = 0; i < allRegulations.length; i++) {
-      const regulation = allRegulations[i];
+    for (let i = 0; i < activeRegulations.length; i++) {
+      const regulation = activeRegulations[i];
       const regulationName = regulation.name;
 
       //We look for cell with the same title as regulation name,
@@ -669,10 +680,26 @@ function getThemeItems(
       valuesObj[regulationName] = cell ? (cell.value as string) : null;
     }
 
+    const parameterType = themeItem.values[parameterTypeCID] as string;
+    const communicationType = themeItem.values[communicationTypeCID] as string;
+    if (parameterType === undefined) {
+      missingConfigs.push(FRIENDLY_FIELD_NAMES.Theme_Parameter_Type);
+    }
+
+    if (communicationType === undefined) {
+      missingConfigs.push(FRIENDLY_FIELD_NAMES.Theme_Communication_Type);
+    }
+
+    //We can throw here because if it does not exist in one item in the for loop,
+    //It does not exist for any item, no need to compile.
+    if (missingConfigs.length) {
+      throw new ConfigError("missing-column", missingConfigs);
+    }
+
     themeItems.push({
       parameterName: themeItem.name,
-      parameterType: themeItem.values[parameterTypeCID] as string,
-      communicationType: themeItem.values[communicationTypeCID] as string,
+      parameterType,
+      communicationType,
       values: valuesObj,
     });
   }
@@ -846,12 +873,13 @@ async function getConfigItems(
 function getOfferItems(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
-  allRegulations: Regulation[]
+  activeRegulations: Regulation[]
 ): GetOfferResult {
-  const activeRegulations = allRegulations.filter((reg) => reg.isChecked);
   const missingConfigs = [];
   const parameterTypeCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Parameter_Type];
+    infraFFNtoCID[PARAMETER_LEVEL.Offer][
+      FRIENDLY_FIELD_NAMES.Offer_Parameter_Type
+    ];
   const useAsComCID =
     infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Use_as_Com];
   const bonusTypeCID =
@@ -860,7 +888,7 @@ function getOfferItems(
     infraFFNtoCID[PARAMETER_LEVEL.Offer][FRIENDLY_FIELD_NAMES.Bonus_Field_Name];
 
   if (!parameterTypeCID) {
-    missingConfigs.push(FRIENDLY_FIELD_NAMES.Parameter_Type);
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Offer_Parameter_Type);
   }
   if (!bonusTypeCID && bonusFieldNameCID) {
     missingConfigs.push(FRIENDLY_FIELD_NAMES.Bonus_Type);
@@ -955,10 +983,14 @@ function getOfferItems(
 function processThemeGroup(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
-  allRegulations: Regulation[]
+  activeRegulations: Regulation[]
 ): ValidationResult<ThemeParameter[], Record<string, string[]>> {
   try {
-    const themeItems = getThemeItems(themeGroup, infraFFNtoCID, allRegulations);
+    const themeItems = getThemeItems(
+      themeGroup,
+      infraFFNtoCID,
+      activeRegulations
+    );
 
     return validateThemeItems(themeItems);
   } catch (err) {
@@ -972,7 +1004,7 @@ function processThemeGroup(
 function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
-  allRegulations: Regulation[]
+  activeRegulations: Regulation[]
 ): ValidationResult<
   BonusOfferItem[] | NonBonusOfferItem[],
   Record<string, string[]>
@@ -981,7 +1013,7 @@ function processOfferGroup(
     const { offers, isBonus } = getOfferItems(
       offerGroup,
       infraFFNtoCID,
-      allRegulations
+      activeRegulations
     );
 
     const paramValidateResult = validateOfferParameters(offers);
@@ -1213,6 +1245,9 @@ async function importCampaign(webhook: MondayWebHook) {
   const ab = campaignDetails.data.ab;
 
   const allRegulations = generateRegulations(regulations, tiers, ab);
+  const activeRegulations = allRegulations.filter(
+    (regulation) => regulation.isChecked
+  );
 
   const [themeGroup, offerGroup, configGroup] = await Promise.all([
     getThemeGroup(themeBID as string, themeName as string),
@@ -1223,13 +1258,13 @@ async function importCampaign(webhook: MondayWebHook) {
   const themeDetails = processThemeGroup(
     themeGroup,
     infraFFNtoCID,
-    allRegulations
+    activeRegulations
   );
 
   const offerDetails = processOfferGroup(
     offerGroup,
     infraFFNtoCID,
-    allRegulations
+    activeRegulations
   );
 
   const configDetails = await processConfigGroup(
