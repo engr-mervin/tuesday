@@ -317,36 +317,88 @@ function getRoundFields(
 }
 
 //NOTE: Here we retrieve values of the campaign itself and process it
-//TODO: Handle pop filters
 
 //Undefined value for a field means two things -
 //Either the CID is not declared in the Config Board,
 //Or it is configured in board but the CID is not found in the actual board..
 //For required configs, we handle both at the GET level, by throwing config error
-function getCampaignFields(
+async function getCampaignFields(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
   infraMapping: Record<string, Record<string, Item>>
-): CampaignFields {
+): Promise<CampaignFields> {
   if (!campaignItem.cells) {
     throw new Error(`Campaign item is not initialized.`);
   }
 
+  const missingConfigs: string[] = [];
+
+  //Validate unconfigured required CIDS
   const dateRangeCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Campaign_Date_Range
     ];
-
-  const [startDate, endDate] = dateRangeCID
-    ? (campaignItem.values[dateRangeCID] as [string, string])
-    : [undefined, undefined];
-
   const abCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.AB];
-  const ab = abCID ? (campaignItem.values[abCID] as number) : undefined;
 
   const tiersCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
+
+  const statusCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][
+      FRIENDLY_FIELD_NAMES.Campaign_Status
+    ];
+
+  const personCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Person];
+
+  if (dateRangeCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Date_Range);
+  }
+  if (statusCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Status);
+  }
+
+  if (personCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Person);
+  }
+
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-configuration", missingConfigs);
+  }
+
+  const dateRange = campaignItem.values[dateRangeCID] as
+    | [string, string]
+    | undefined;
+
+  const status = campaignItem.values[statusCID] as string | undefined;
+
+  const personObject = campaignItem.cells[personCID].rawValue as
+    | Record<string, any>
+    | undefined;
+
+  
+  //Validate missing columns
+  if (dateRange === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Date_Range);
+  }
+
+  if (personObject === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Person);
+  }
+
+  //TODO: Validate if status is already created or etc
+  if (status === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Status);
+  }
+
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-column", missingConfigs);
+  }
+  const [startDate, endDate] = dateRange!;
+
+  const ab = abCID ? (campaignItem.values[abCID] as number) : undefined;
+
   const tiers = tiersCID
     ? (campaignItem.values[tiersCID] as string[])
     : undefined;
@@ -357,7 +409,6 @@ function getCampaignFields(
     ? (campaignItem.values[controlGroupCID] as number)
     : undefined;
 
-  //TODO: Verify if this exists in any board
   const isOneTimeCampaignCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Is_One_Time_Round
@@ -418,23 +469,7 @@ function getCampaignFields(
     regulations[regulationName] = isRegulationChecked;
   }
 
-  const statusCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][
-      FRIENDLY_FIELD_NAMES.Campaign_Status
-    ];
-
-  //TODO: Validate if status is already created or etc
-  const status = statusCID
-    ? (campaignItem.values[statusCID] as string)
-    : undefined;
-
-  const personCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Person];
-
-  const personId = personCID
-    ? ((campaignItem.cells[personCID].rawValue as Record<string, any>)
-        .personsAndTeams[0].id as string)
-    : undefined;
+  const user = await mondayClient.getUser(personObject!.personsAndTeams[0].id);
 
   const themeCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Theme];
@@ -458,8 +493,8 @@ function getCampaignFields(
     tiers,
     controlGroup,
     regulations,
-    status,
-    personId,
+    status: status!,
+    user,
     theme,
     offer,
     isOneTime,
@@ -589,13 +624,13 @@ function processRoundItems(
   }
 }
 
-function processCampaignItem(
+async function processCampaignItem(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
   infraMapping: Record<string, Record<string, Item>>
-): ValidationResult<CampaignFields> {
+): Promise<ValidationResult<CampaignFields>> {
   try {
-    const campaignFields = getCampaignFields(
+    const campaignFields = await getCampaignFields(
       campaignItem,
       infraFFNtoCID,
       infraMapping
@@ -1209,7 +1244,7 @@ async function importCampaign(webhook: MondayWebHook) {
 
   const actionFlags = getBoardActionFlags(infraItem);
 
-  const campaignDetails = processCampaignItem(
+  const campaignDetails = await processCampaignItem(
     campaignItem,
     infraFFNtoCID,
     infraMapping

@@ -1,13 +1,15 @@
+import { User } from "monstaa/dist/classes/User";
+
 export interface CampaignFields {
-  name: Field<string>;
-  startDate: Field<string>;
-  endDate: Field<string>;
+  name: RequiredField<string>;
+  startDate: RequiredField<string>;
+  endDate: RequiredField<string>;
   ab: Field<number>;
   tiers: Field<string[]>;
   controlGroup: Field<number>;
   regulations: Record<string, boolean>;
-  status: Field<string>;
-  personId: Field<string>;
+  status: RequiredField<string>;
+  user: RequiredField<User>;
   theme: Field<string>;
   offer: Field<string>;
   isOneTime: Field<boolean>;

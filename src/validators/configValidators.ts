@@ -33,31 +33,22 @@ import { validateParameter } from "./parameterValidators";
 export function validateConfigItems(
   configItems: ConfigItem[]
 ): ValidationResult<undefined, Record<string, string[]>> {
-  //Validate individual fields only..
-
   const errors: Record<string, string[]> = {};
 
   for (let i = 0; i < configItems.length; i++) {
-    const configErrors = [];
     const configItem = configItems[i];
 
     const allowedTypes = Object.values(CONFIGURATION_TYPES);
 
     if (!allowedTypes.includes(configItem.type)) {
-      configErrors.push(
-        `Configuration Type is either missing or not supported`
-      );
+      errors[configItem.name] = [
+        `Configuration Type is either missing or not supported`,
+      ];
+      continue;
     }
 
-    const nameSet = new Set();
-
-    //Enforce uniqueness in names of subitems, not sure if ideal..
-    if (configItem.fields !== undefined) {
-      for (const field of configItem.fields) {
-        const name = field.name;
-        //Duplicates validation + param validation will be inside the dedicated validator.
-      }
-    }
+    const validator = configValidationRules[configItem.type];
+    const configErrors = validator(configItem);
 
     if (configErrors.length) {
       errors[configItem.name] = configErrors;
@@ -424,7 +415,7 @@ export const configValidationRules: Record<
     const values = Object.values(segments);
     if (fieldName.toLowerCase().includes("id")) {
       for (const value of values) {
-        if (!BANNER_REGEX.GUID.test(value)) {
+        if (!BANNER_REGEX.test(value)) {
           errors.push(`The Banner ID should be in 8-4-4-4-12 format only.`);
         }
       }
