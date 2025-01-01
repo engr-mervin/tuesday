@@ -331,9 +331,9 @@ async function getCampaignFields(
     throw new Error(`Campaign item is not initialized.`);
   }
 
+  //IMPROVE: Maybe move config get to another function which takes items by FFNs...
   const missingConfigs: string[] = [];
 
-  //Validate unconfigured required CIDS
   const dateRangeCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Campaign_Date_Range
@@ -387,7 +387,6 @@ async function getCampaignFields(
     missingConfigs.push(FRIENDLY_FIELD_NAMES.Person);
   }
 
-  //TODO: Validate if status is already created or etc
   if (status === undefined) {
     missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Status);
   }
@@ -884,6 +883,8 @@ async function getConfigItems(
         classification: subitem.values[classification!.columnId] as string,
         fieldId: subitem.values[fieldId!.columnId] as string,
         value: subitem.values[value!.columnId] as string,
+        //NOTE: For file columns .values return asset id.
+        //We will still need to extract the asset url to access the file..
         files: files ? (subitem.values[files.columnId] as string) : undefined,
       };
 

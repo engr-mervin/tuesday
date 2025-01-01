@@ -109,7 +109,7 @@ export const COMPLEX_OFFER_TYPES = {
   "TRT 4": 4,
 };
 
-export const CAMPAIGN_STATUSES = {
+export const CAMPAIGN_STATUSES_OBJ = {
   Draft: { Id: 1, Name: "Draft" },
   In_Progress: { Id: 2 },
   Ready_For_Tyson: { Id: 3, Name: "Ready For Tyson" },
@@ -117,12 +117,28 @@ export const CAMPAIGN_STATUSES = {
   Campaign_Created: { Id: 5, Name: "Campaign Created" },
   Test_Pending_Approval: { Id: 6, Name: "Test Pending Approval" },
   Approved_For_Production: { Id: 7, Name: "Approved For Prod" },
-  Error: { Id: 8, Name: "fail" },
+  Error: { Id: 8, Name: "Error" },
   In_Prod: { Id: 9, Name: "In Prod" },
   Completed: { Id: 10, Name: "Completed" },
   Launched: { Id: 11, Name: "Launched" },
   For_Cancellation: { Id: 12, Name: "For Cancellation" },
   Canceled: { Id: 13, Name: "Canceled" },
+};
+
+export const CAMPAIGN_STATUSES = {
+  Draft: "Draft",
+  In_Progress: "Ready For Tyson",
+  Ready_For_Tyson: "Ready For Tyson",
+  In_Queue: "Campaign Created",
+  Campaign_Created: "Campaign Created",
+  Test_Pending_Approval: "Test Pending Approval",
+  Approved_For_Production: "Approved For Prod",
+  Error: "Error",
+  In_Prod: "In Prod",
+  Completed: "Completed",
+  Launched: "Launched",
+  For_Cancellation: "For Cancellation",
+  Canceled: "Canceled",
 };
 
 export const PARAMETER_LEVEL = {
@@ -135,16 +151,50 @@ export const PARAMETER_LEVEL = {
   None: "",
 };
 
+export const PROMO_META_CLASSIFICATIONS = {
+  Description: "Description",
+  Title: "Title",
+  URL: "URL",
+  Type: "Type",
+};
+
+export const PROMO_CONFIG_CLASSIFICATIONS = {
+  Segment_Inject: "Segment Inject",
+  Name: "Name",
+  Template_Name: "Template Name",
+  URL: "URL",
+};
+
+export const PROMO_PAGE_CLASSIFICATIONS = {
+  Mobile_Image: "Mobile Image",
+  Desktop_Image: "Desktop Image",
+  Text: "Text",
+  Label: "Label",
+  CTA_Script: "CTA_Script",
+  Description: "Description",
+  Title: "Title",
+  URL: "URL",
+  Type: "Type",
+};
+
+export const REQUIRED_PROMO_META_CLASSIFICATIONS = []
+export const REQUIRED_PROMO_CONFIG_CLASSIFICATIONS = ["Name", "Template Name"]
+export const REQUIRED_PROMO_IMAGE_CLASSIFICATIONS = ["Mobile Image", "Desktop Image"]
+export const REQUIRED_PROMO_TEXT_CLASSIFICATIONS = ["Text"]
+export const REQUIRED_PROMO_CTA_CLASSIFICATIONS = ["Label"]
+
 export const CONFIGURATION_TYPES = {
   Promocode_Config: "Promocode Config",
   Neptune_Config: "Neptune Config",
   Pacman_Config: "Pacman Config",
   Neptune_Bind: "Neptune Bind",
   Banner: "Banner",
+
   Promotion_Image: "Promotion Image",
   Promotion_CTA: "Promotion CTA",
   Promotion_Text: "Promotion Text",
   Promotion_Config: "Promotion Config",
+  Promotion_Meta: "Promotion Meta",
 
   OMG: "Omg",
   Email: "Email",
@@ -196,7 +246,7 @@ export const FIELDS_REMOVE_NEPTUNE_ID = {
 export const FIELDS_SEGMENT_FILTER = {
   Cashback_Total_Bet_Seg: "cashbackTotalBetSeg",
   Cashback_Base_Sum: "cashbackBaseSum",
-}
+};
 
 export const FIELDS_HOLOGRAM = {
   Casino_Hologram_ID: "casinoHologramID",

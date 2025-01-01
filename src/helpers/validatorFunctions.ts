@@ -153,7 +153,7 @@ export function isIntegerInRange(
 }
 
 export function isValidBannerId(value: string) {
-  return BANNER_REGEX.GUID.test(value);
+  return BANNER_REGEX.test(value);
 }
 
 export function isFloatInRange(

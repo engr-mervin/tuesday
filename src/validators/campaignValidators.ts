@@ -1,3 +1,4 @@
+import { CAMPAIGN_STATUSES } from "../constants/INFRA";
 import { CAMPAIGN_NAME_REGEX } from "../constants/REGEXES";
 import { addDays, getToday } from "../helpers/dateFunctions";
 import { isInteger } from "../helpers/validatorFunctions";
@@ -19,6 +20,18 @@ export function validateCampaignItem(
       errors.push(
         `Campaign name must not contain special characters. Name: ${campaignFields.name}`
       );
+    }
+
+    if (
+      ![CAMPAIGN_STATUSES.Draft, CAMPAIGN_STATUSES.Ready_For_Tyson].includes(
+        campaignFields.status
+      )
+    ) {
+      errors.push(`Campaign status should be either draft/ready for tyson.`);
+    }
+
+    if (campaignFields.user === null) {
+      errors.push(`Triggering user not found in directory.`);
     }
 
     //VALIDATE DATES
@@ -45,7 +58,6 @@ export function validateCampaignItem(
       }
     }
 
-    //TODO: FOR DESIGN ERROR HANDLING
     if (Object.keys(campaignFields.regulations).length === 0) {
       errors.push(`Campaign must have a regulation.`);
     }

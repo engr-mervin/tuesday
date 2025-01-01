@@ -14,8 +14,17 @@ import {
   FIELDS_REMOVE_NEPTUNE_ID,
   FIELDS_SEGMENT_FILTER,
   FIELDS_SMS,
+  PROMO_CONFIG_CLASSIFICATIONS,
+  PROMO_META_CLASSIFICATIONS,
+  PROMO_PAGE_CLASSIFICATIONS,
+  REQUIRED_PROMO_CONFIG_CLASSIFICATIONS,
+  REQUIRED_PROMO_CTA_CLASSIFICATIONS,
+  REQUIRED_PROMO_IMAGE_CLASSIFICATIONS,
+  REQUIRED_PROMO_META_CLASSIFICATIONS,
+  REQUIRED_PROMO_TEXT_CLASSIFICATIONS,
 } from "../constants/INFRA";
 import { BANNER_REGEX, HOLOGRAM_REGEX } from "../constants/REGEXES";
+import { arrayToCommaSeparatedList } from "../helpers/stringFunctions";
 import {
   isCommaSeparatedListOfIntegers,
   isFloatInRange,
@@ -515,6 +524,8 @@ export const configValidationRules: Record<
     const errors = [];
     const values = Object.values(segments);
 
+    //NOTE: Why is the if outside the for loop? because we only need
+    //to check the field name once
     if (FIELDS_OMG.OMG_Template_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, 10_000, 99_999, [-1])) {
@@ -648,6 +659,189 @@ export const configValidationRules: Record<
         }
       }
     }
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Promotion_Meta]: (configItem: ConfigItem) => {
+    const { fields } = configItem;
+    const errors = [];
+
+    if (fields === undefined) {
+      return [];
+    }
+
+    const missingFields = REQUIRED_PROMO_META_CLASSIFICATIONS.filter(
+      (classification) =>
+        !fields.find((field) => field.classification === classification)
+    );
+
+    if (missingFields.length) {
+      errors.push(
+        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+      );
+    }
+
+    const unsupportedFields = fields.filter(
+      (field) =>
+        !Object.values(PROMO_META_CLASSIFICATIONS).includes(
+          field.classification
+        )
+    );
+
+    if (unsupportedFields.length) {
+      errors.push(
+        `Invalid field classifications: ${arrayToCommaSeparatedList(
+          unsupportedFields.map((x) => x.classification)
+        )}`
+      );
+    }
+
+    return errors;
+  },
+
+  [CONFIGURATION_TYPES.Promotion_Config]: (configItem: ConfigItem) => {
+    const { fields } = configItem;
+    const errors = [];
+
+    if (fields === undefined) {
+      return [];
+    }
+
+    const missingFields = REQUIRED_PROMO_CONFIG_CLASSIFICATIONS.filter(
+      (classification) =>
+        !fields.find((field) => field.classification === classification)
+    );
+
+    if (missingFields.length) {
+      errors.push(
+        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+      );
+    }
+
+    const unsupportedFields = fields.filter(
+      (field) =>
+        !Object.values(PROMO_CONFIG_CLASSIFICATIONS).includes(
+          field.classification
+        )
+    );
+
+    if (unsupportedFields.length) {
+      errors.push(
+        `Invalid field classifications: ${arrayToCommaSeparatedList(
+          unsupportedFields.map((x) => x.classification)
+        )}`
+      );
+    }
+
+    return errors;
+  },
+
+  [CONFIGURATION_TYPES.Promotion_Image]: (configItem: ConfigItem) => {
+    const { fields } = configItem;
+    const errors = [];
+
+    if (fields === undefined) {
+      return [];
+    }
+
+    const missingFields = REQUIRED_PROMO_IMAGE_CLASSIFICATIONS.filter(
+      (classification) =>
+        !fields.find((field) => field.classification === classification)
+    );
+
+    if (missingFields.length) {
+      errors.push(
+        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+      );
+    }
+
+    const unsupportedFields = fields.filter(
+      (field) =>
+        !Object.values(PROMO_PAGE_CLASSIFICATIONS).includes(
+          field.classification
+        )
+    );
+
+    if (unsupportedFields.length) {
+      errors.push(
+        `Invalid field classifications: ${arrayToCommaSeparatedList(
+          unsupportedFields.map((x) => x.classification)
+        )}`
+      );
+    }
+
+    return errors;
+  },
+
+  [CONFIGURATION_TYPES.Promotion_Text]: (configItem: ConfigItem) => {
+    const { fields } = configItem;
+    const errors = [];
+
+    if (fields === undefined) {
+      return [];
+    }
+
+    const missingFields = REQUIRED_PROMO_TEXT_CLASSIFICATIONS.filter(
+      (classification) =>
+        !fields.find((field) => field.classification === classification)
+    );
+
+    if (missingFields.length) {
+      errors.push(
+        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+      );
+    }
+
+    const unsupportedFields = fields.filter(
+      (field) =>
+        !Object.values(PROMO_PAGE_CLASSIFICATIONS).includes(
+          field.classification
+        )
+    );
+
+    if (unsupportedFields.length) {
+      errors.push(
+        `Invalid field classifications: ${arrayToCommaSeparatedList(
+          unsupportedFields.map((x) => x.classification)
+        )}`
+      );
+    }
+
+    return errors;
+  },
+  [CONFIGURATION_TYPES.Promotion_CTA]: (configItem: ConfigItem) => {
+    const { fields } = configItem;
+    const errors = [];
+
+    if (fields === undefined) {
+      return [];
+    }
+
+    const missingFields = REQUIRED_PROMO_CTA_CLASSIFICATIONS.filter(
+      (classification) =>
+        !fields.find((field) => field.classification === classification)
+    );
+
+    if (missingFields.length) {
+      errors.push(
+        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+      );
+    }
+
+    const unsupportedFields = fields.filter(
+      (field) =>
+        !Object.values(PROMO_PAGE_CLASSIFICATIONS).includes(
+          field.classification
+        )
+    );
+
+    if (unsupportedFields.length) {
+      errors.push(
+        `Invalid field classifications: ${arrayToCommaSeparatedList(
+          unsupportedFields.map((x) => x.classification)
+        )}`
+      );
+    }
+
     return errors;
   },
 };
