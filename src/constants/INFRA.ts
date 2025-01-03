@@ -51,7 +51,7 @@ export const ROUND_TYPES = {
   Intro: "Intro",
   Reminder_1: "Reminder 1",
   Reminder_2: "Reminder 2",
-};
+} as const;
 
 export const EMPTY_SELECTS_ENUM = {
   Offer: "Choose Offer",
@@ -165,6 +165,7 @@ export const PROMO_CONFIG_CLASSIFICATIONS = {
   URL: "URL",
 };
 
+//TODO: Divide into individual objects per group (image, cta and text)
 export const PROMO_PAGE_CLASSIFICATIONS = {
   Mobile_Image: "Mobile Image",
   Desktop_Image: "Desktop Image",

@@ -34,7 +34,10 @@ import { validateParameter } from "./validators/parameterValidators.js";
 import { validateCampaignItem } from "./validators/campaignValidators.js";
 import { CampaignFields, Field } from "./types/campaignTypes.js";
 import { ConfigItem, ConfigItemField } from "./types/configTypes.js";
-import { validateConfigItems } from "./validators/configValidators.js";
+import {
+  validateCampaignConfigs,
+  validateConfigItems,
+} from "./validators/configValidators.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -377,7 +380,6 @@ async function getCampaignFields(
     | Record<string, any>
     | undefined;
 
-  
   //Validate missing columns
   if (dateRange === undefined) {
     missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Date_Range);
@@ -1094,20 +1096,29 @@ async function processConfigGroup(
   configGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Promise<ValidationResult<ConfigItem[], Record<string, string[]>>> {
+): Promise<
+  ValidationResult<ConfigItem[], Record<string, string[]> | string[]>
+> {
   try {
     const configItems = await getConfigItems(
       configGroup,
       infraFFNtoCID,
       allRegulations
     );
+
     const validationResult = validateConfigItems(configItems);
 
-    // if (validationResult.status === "error") {
-    //   return validationResult;
-    // } else if (validationResult.status === "fail") {
-    //   return validationResult;
-    // }
+    if (validationResult.status !== "success") {
+      return validationResult;
+    }
+
+    const validateCampaignResult = validateCampaignConfigs(
+      validationResult.data
+    );
+
+    if (validateCampaignResult.status !== "success") {
+      return validateCampaignResult;
+    }
 
     return {
       status: "success",
@@ -1128,10 +1139,8 @@ async function processConfigGroup(
 //and all the validations is made upon this snapshot
 //After validation, we generate a campaign object and save it into a database
 //This way, any user changes after the import flow will not be reflected in the handler
-//also improving run time, AND we make sure that the handler is handling a valid campaign
+//also improving run time, we make sure that the handler is handling a valid campaign
 //AND we are moving the validation layer of Monday entirely in Tuesday API
-//COOL RIGHT?
-
 interface Regulation {
   name: string;
   isChecked: boolean;

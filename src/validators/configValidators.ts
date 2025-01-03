@@ -1,5 +1,4 @@
 import {
-  ALL_CONFIG_CLASSIFICATIONS,
   CONFIGURATION_TYPES,
   FIELDS_BANNER,
   FIELDS_EMAIL,
@@ -22,8 +21,9 @@ import {
   REQUIRED_PROMO_IMAGE_CLASSIFICATIONS,
   REQUIRED_PROMO_META_CLASSIFICATIONS,
   REQUIRED_PROMO_TEXT_CLASSIFICATIONS,
+  ROUND_TYPES,
 } from "../constants/INFRA";
-import { BANNER_REGEX, HOLOGRAM_REGEX } from "../constants/REGEXES";
+import { BANNER_REGEX } from "../constants/REGEXES";
 import { arrayToCommaSeparatedList } from "../helpers/stringFunctions";
 import {
   isCommaSeparatedListOfIntegers,
@@ -36,12 +36,17 @@ import {
   isValidTime,
 } from "../helpers/validatorFunctions";
 import { ValidationResult } from "../server";
-import { ConfigItem, ConfigItemField } from "../types/configTypes";
+import { Round } from "../types/campaignTypes";
+import {
+  ConfigItem,
+  ConfigItemField,
+  ValidatedConfigItem,
+} from "../types/configTypes";
 import { validateParameter } from "./parameterValidators";
 
 export function validateConfigItems(
   configItems: ConfigItem[]
-): ValidationResult<undefined, Record<string, string[]>> {
+): ValidationResult<ValidatedConfigItem[], Record<string, string[]>> {
   const errors: Record<string, string[]> = {};
 
   for (let i = 0; i < configItems.length; i++) {
@@ -63,11 +68,140 @@ export function validateConfigItems(
       errors[configItem.name] = configErrors;
     }
   }
-  return {
-    status: "success",
-  };
+  return errors.length
+    ? { status: "fail", data: errors }
+    : {
+        status: "success",
+        data: configItems as ValidatedConfigItem[],
+      };
 }
 
+export function validateCampaignConfigs(
+  configItems: ValidatedConfigItem[]
+): ValidationResult<undefined, string[]> {
+  //Validate config items that can only have one record...
+  const campaignConfigErrors = [];
+  const configSet = new Set();
+
+  //NOTE: Currently not round scoped
+  const uniqueConfigs = [
+    CONFIGURATION_TYPES.Neptune_Bind,
+    CONFIGURATION_TYPES.Promotion_Config,
+    CONFIGURATION_TYPES.Promotion_Meta,
+  ];
+  for (const configItem of configItems) {
+    if (uniqueConfigs.includes(configItem.type)) {
+      if (configSet.has(configItem.type)) {
+        campaignConfigErrors.push(
+          `${configItem.type} should only have one record.`
+        );
+      }
+
+      configSet.add(configItem.type);
+    }
+  }
+
+  //Validate config items that can be duplicated but has the same name
+  const configNameSet = new Set();
+  const uniqueNameConfigs = [
+    CONFIGURATION_TYPES.Neptune_Config,
+    CONFIGURATION_TYPES.Pacman_Config,
+    CONFIGURATION_TYPES.Promocode_Config,
+    CONFIGURATION_TYPES.Promotion_Image,
+    CONFIGURATION_TYPES.Promotion_Text,
+    CONFIGURATION_TYPES.Promotion_CTA,
+  ];
+
+  for (const configItem of configItems) {
+    const uniqueIdentifier = `${configItem.type}___${configItem.name}`;
+    if (uniqueNameConfigs.includes(configItem.type)) {
+      if (configNameSet.has(uniqueIdentifier)) {
+        campaignConfigErrors.push(
+          `Two or more ${configItem.type} records have the same name: ${configItem.name}.`
+        );
+      }
+
+      configNameSet.add(uniqueIdentifier);
+    }
+  }
+
+  //Validate config items that can be duplicated but has the same classification
+  const configFieldSet = new Set();
+  const uniqueFieldConfigs = [
+    CONFIGURATION_TYPES.Personal_Hologram,
+    CONFIGURATION_TYPES.Banner,
+    CONFIGURATION_TYPES.SMS,
+    CONFIGURATION_TYPES.Push,
+    CONFIGURATION_TYPES.Email,
+    CONFIGURATION_TYPES.Neptune,
+    CONFIGURATION_TYPES.Neptune_Opt_In,
+    CONFIGURATION_TYPES.Remove_Neptune,
+    CONFIGURATION_TYPES.OMG,
+    CONFIGURATION_TYPES.Segment_Filter,
+  ];
+
+  for (const configItem of configItems) {
+    const uniqueIdentifier = `${configItem.round}__${configItem.type}___${configItem.fieldName}`;
+    if (uniqueFieldConfigs.includes(configItem.type)) {
+      if (configFieldSet.has(uniqueIdentifier)) {
+        campaignConfigErrors.push(
+          `Two or more ${configItem.type} records have the same field name: ${configItem.fieldName}.`
+        );
+      }
+
+      configFieldSet.add(uniqueIdentifier);
+    }
+  }
+
+  //Validate existence of dependency configs:
+  //e.g. Neptune bind should have a neptune config record
+  const neptuneBind = configItems.find(
+    (item) => item.type === CONFIGURATION_TYPES.Neptune_Bind
+  );
+  const neptuneConfig = configItems.find(
+    (item) => item.type === CONFIGURATION_TYPES.Neptune_Config
+  );
+
+  if (neptuneBind && !neptuneConfig) {
+    campaignConfigErrors.push(
+      `Neptune bind requires at least one neptune config definition.`
+    );
+  }
+
+  const promoText = configItems.find(
+    (item) => item.type === CONFIGURATION_TYPES.Promotion_Text
+  );
+  const promoImage = configItems.find(
+    (item) => item.type === CONFIGURATION_TYPES.Promotion_Image
+  );
+  const promoCTA = configItems.find(
+    (item) => item.type === CONFIGURATION_TYPES.Promotion_CTA
+  );
+  const promoConfig = configItems.find(
+    (item) => item.type === CONFIGURATION_TYPES.Promotion_Config
+  );
+
+  if ((promoImage || promoCTA || promoText) && !promoConfig) {
+    campaignConfigErrors.push(
+      `Promotion elements defined but missing Promotion Configuration item.`
+    );
+  }
+
+  return campaignConfigErrors.length
+    ? {
+        status: "fail",
+        data: campaignConfigErrors,
+      }
+    : {
+        status: "success",
+      };
+}
+
+//There are a lot of code duplication here, this is a tradeoff introduced by
+//wanting to enclose all the validations of each config type in its own validator.
+//should we need to refactor, maybe grouping the config types is a good idea
+//e.g., nested configs, inline configs
+//then validate required fields of nested config
 export const configValidationRules: Record<
   string,
   (configItem: ConfigItem) => string[]
@@ -415,13 +549,22 @@ export const configValidationRules: Record<
   },
   [CONFIGURATION_TYPES.Neptune_Bind]: (configItem: ConfigItem) => {
     //NOTE: Intervalidation of checking if value exists in neptune config.
-    //No validation here anymore.
+    //Only validation here is to check if it has at least one segment value:
+
+    if (Object.values(configItem.segments).every((segment) => segment === "")) {
+      return [`Neptune bind does not have any values.`];
+    }
     return [];
   },
   [CONFIGURATION_TYPES.Banner]: (configItem: ConfigItem) => {
     const { fieldName, segments } = configItem;
     const errors = [];
     const values = Object.values(segments);
+
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
+
     if (fieldName.toLowerCase().includes("id")) {
       for (const value of values) {
         if (!BANNER_REGEX.test(value)) {
@@ -464,6 +607,10 @@ export const configValidationRules: Record<
     const errors = [];
     const values = Object.values(segments);
 
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
+
     if ((FIELDS_HOLOGRAM.Duration_Start_Day = fieldName)) {
       for (const value of values) {
         if (!isIntegerInRange(value, 0, 1)) {
@@ -495,11 +642,14 @@ export const configValidationRules: Record<
     // }
     return errors;
   },
-
   [CONFIGURATION_TYPES.Email]: (configItem: ConfigItem) => {
     const { fieldName, segments } = configItem;
     const errors = [];
     const values = Object.values(segments);
+
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
 
     if (FIELDS_EMAIL.Email_Template_ID === fieldName) {
       for (const value of values) {
@@ -523,7 +673,10 @@ export const configValidationRules: Record<
     const { fieldName, segments } = configItem;
     const errors = [];
     const values = Object.values(segments);
-
+    
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     //NOTE: Why is the if outside the for loop? because we only need
     //to check the field name once
     if (FIELDS_OMG.OMG_Template_ID === fieldName) {
@@ -549,6 +702,9 @@ export const configValidationRules: Record<
     const errors = [];
     const values = Object.values(segments);
 
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     if (FIELDS_PUSH.Push_Template_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, 1, 99_999, [-1])) {
@@ -567,12 +723,14 @@ export const configValidationRules: Record<
 
     return errors;
   },
-
   [CONFIGURATION_TYPES.SMS]: (configItem: ConfigItem) => {
     const { fieldName, segments } = configItem;
     const errors = [];
     const values = Object.values(segments);
 
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     if (FIELDS_SMS.SMS_Template_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, 1, 99_999, [-1])) {
@@ -591,12 +749,13 @@ export const configValidationRules: Record<
 
     return errors;
   },
-
   [CONFIGURATION_TYPES.Neptune]: (configItem: ConfigItem) => {
     const { fieldName, segments } = configItem;
     const errors = [];
     const values = Object.values(segments);
-
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     if (FIELDS_NEPTUNE_ID.Neptune_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, -1)) {
@@ -612,6 +771,9 @@ export const configValidationRules: Record<
     const errors = [];
     const values = Object.values(segments);
 
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     if (FIELDS_REMOVE_NEPTUNE_ID.Neptune_Remove_Neptune_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, -1)) {
@@ -627,6 +789,9 @@ export const configValidationRules: Record<
     const errors = [];
     const values = Object.values(segments);
 
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     if (FIELDS_NEPTUNE_OPT_IN_ID.Neptune_Opt_In_ID === fieldName) {
       for (const value of values) {
         if (!isIntegerInRange(value, -1)) {
@@ -642,6 +807,9 @@ export const configValidationRules: Record<
     const errors = [];
     const values = Object.values(segments);
 
+    if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
+      errors.push(`Round type is invalid: ${configItem.round}`);
+    }
     if (
       [
         FIELDS_SEGMENT_FILTER.Cashback_Base_Sum,
@@ -697,7 +865,6 @@ export const configValidationRules: Record<
 
     return errors;
   },
-
   [CONFIGURATION_TYPES.Promotion_Config]: (configItem: ConfigItem) => {
     const { fields } = configItem;
     const errors = [];
@@ -734,7 +901,6 @@ export const configValidationRules: Record<
 
     return errors;
   },
-
   [CONFIGURATION_TYPES.Promotion_Image]: (configItem: ConfigItem) => {
     const { fields } = configItem;
     const errors = [];
@@ -769,9 +935,34 @@ export const configValidationRules: Record<
       );
     }
 
+    //Validate reference fields to have file/text values
+    for (const field of fields) {
+      if (
+        [
+          PROMO_PAGE_CLASSIFICATIONS.Desktop_Image,
+          PROMO_PAGE_CLASSIFICATIONS.Mobile_Image,
+        ].includes(field.classification)
+      ) {
+        if (!field.files) {
+          errors.push(`${field.classification} is missing file values.`);
+        }
+      } else if (
+        [PROMO_PAGE_CLASSIFICATIONS.Text].includes(field.classification)
+      ) {
+        if (!field.files && !field.value) {
+          errors.push(
+            `${field.classification} is missing both file and text values.`
+          );
+        }
+      } else {
+        if (!field.value) {
+          errors.push(`${field.classification} is missing text value.`);
+        }
+      }
+    }
+
     return errors;
   },
-
   [CONFIGURATION_TYPES.Promotion_Text]: (configItem: ConfigItem) => {
     const { fields } = configItem;
     const errors = [];
@@ -804,6 +995,20 @@ export const configValidationRules: Record<
           unsupportedFields.map((x) => x.classification)
         )}`
       );
+    }
+
+    for (const field of fields) {
+      if ([PROMO_PAGE_CLASSIFICATIONS.Text].includes(field.classification)) {
+        if (!field.files && !field.value) {
+          errors.push(
+            `${field.classification} is missing both file and text values.`
+          );
+        }
+      } else {
+        if (!field.value) {
+          errors.push(`${field.classification} is missing text value.`);
+        }
+      }
     }
 
     return errors;
@@ -840,6 +1045,20 @@ export const configValidationRules: Record<
           unsupportedFields.map((x) => x.classification)
         )}`
       );
+    }
+
+    for (const field of fields) {
+      if ([PROMO_PAGE_CLASSIFICATIONS.Text].includes(field.classification)) {
+        if (!field.files && !field.value) {
+          errors.push(
+            `${field.classification} is missing both file and text values.`
+          );
+        }
+      } else {
+        if (!field.value) {
+          errors.push(`${field.classification} is missing text value.`);
+        }
+      }
     }
 
     return errors;

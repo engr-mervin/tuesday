@@ -1,5 +1,5 @@
 import { User } from "monstaa/dist/classes/User";
-import { CAMPAIGN_STATUSES } from "../constants/INFRA";
+import { CAMPAIGN_STATUSES, ROUND_TYPES } from "../constants/INFRA";
 
 //Get fields will validate existence,
 //Validation will validate validity of values
@@ -27,7 +27,7 @@ export interface CampaignFields {
 export type Field<T> = T | undefined | null;
 export type RequiredField<T> = T; //Means it should be configured
 
-export type Round = "Intro" | "Reminder 1" | "Reminder 2" | "Reminder 3";
+export type Round = typeof ROUND_TYPES[keyof typeof ROUND_TYPES];
 
 export interface ValidatedCampaignFields {
   name: Field<string>;
