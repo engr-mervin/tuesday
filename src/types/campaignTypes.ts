@@ -32,6 +32,11 @@ export type Field<T> = T | undefined;
 //e.g. if(field){obj[field] = value}, as compared to just declaring the whole object in one place.
 export type Optional<T> = T | undefined;
 
+export interface ErrorObject {
+  name: string;
+  errors: string[] | ErrorObject[]
+}
+
 export interface ValidatedCampaignFields {
   name: string;
   startDate: string;

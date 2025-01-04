@@ -1,4 +1,4 @@
-import { CAMPAIGN_STATUSES } from "../constants/INFRA";
+import { CAMPAIGN_STATUSES, EMPTY_SELECTS_ENUM } from "../constants/INFRA";
 import { CAMPAIGN_NAME_REGEX } from "../constants/REGEXES";
 import { addDays, getToday } from "../helpers/dateFunctions";
 import { isInteger } from "../helpers/validatorFunctions";
@@ -13,6 +13,20 @@ export function validateCampaignItem(
 ): ValidationResult<ValidatedCampaignFields> {
   try {
     const errors = [];
+
+    if (
+      !campaignFields.theme ||
+      EMPTY_SELECTS_ENUM.Theme === campaignFields.theme
+    ) {
+      errors.push(`Campaign theme is either missing or invalid.`);
+    }
+
+    if (
+      !campaignFields.offer ||
+      EMPTY_SELECTS_ENUM.Offer === campaignFields.offer
+    ) {
+      errors.push(`Campaign offer is either missing or invalid.`);
+    }
 
     if (!campaignFields.name) {
       errors.push(`Campaign name is not defined.`);
@@ -34,7 +48,6 @@ export function validateCampaignItem(
       errors.push(`Triggering user not found in directory.`);
     }
 
-    //VALIDATE DATES
     if (!campaignFields.startDate || !campaignFields.endDate) {
       errors.push(`Campaign must have campaign start/end dates.`);
     } else {
@@ -108,7 +121,12 @@ export function validateCampaignItem(
     return errors.length
       ? {
           status: "fail",
-          data: errors,
+          data: [
+            {
+              name: "Campaign",
+              errors,
+            },
+          ],
         }
       : {
           status: "success",

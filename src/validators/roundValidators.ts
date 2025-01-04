@@ -1,14 +1,15 @@
 import { ROUND_TYPES } from "../constants/INFRA";
 import { ValidationResult } from "../server";
+import { ErrorObject } from "../types/campaignTypes";
 import { RoundFields, ValidatedRoundFields } from "../types/roundTypes";
 
 export type Round = (typeof ROUND_TYPES)[keyof typeof ROUND_TYPES];
 
 export function validateCampaignRounds(
   roundsFields: RoundFields[]
-): ValidationResult {
+): ValidationResult<undefined> {
   try {
-    const errors = [];
+    const errors: string[] = [];
 
     if (roundsFields.length === 0) {
       errors.push(`Campaign is missing rounds.`);
@@ -36,7 +37,12 @@ export function validateCampaignRounds(
     return errors.length
       ? {
           status: "fail",
-          data: errors,
+          data: [
+            {
+              name: "All",
+              errors,
+            },
+          ],
         }
       : {
           status: "success",
@@ -51,9 +57,9 @@ export function validateCampaignRounds(
 
 export function validateRoundItems(
   roundFieldsArr: RoundFields[]
-): ValidationResult<ValidatedRoundFields[], string[][]> {
+): ValidationResult<ValidatedRoundFields[]> {
   try {
-    const roundErrors: string[][] = [];
+    const roundErrors: ErrorObject[] = [];
     for (const roundFields of roundFieldsArr) {
       const errors: string[] = [];
 
@@ -72,7 +78,10 @@ export function validateRoundItems(
       }
 
       if (errors.length) {
-        roundErrors.push(errors);
+        roundErrors.push({
+          name: roundFields.name,
+          errors,
+        });
       }
     }
 

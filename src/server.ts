@@ -34,6 +34,7 @@ import { validateParameter } from "./validators/parameterValidators.js";
 import { validateCampaignItem } from "./validators/campaignValidators.js";
 import {
   CampaignFields,
+  ErrorObject,
   Field,
   Optional,
 } from "./types/campaignTypes.js";
@@ -147,7 +148,7 @@ async function getOfferGroup(
 }
 
 //Fail means
-export type ValidationResult<T = undefined, U = string[]> =
+export type ValidationResult<T = undefined, U = ErrorObject[]> =
   | (T extends undefined
       ? {
           status: "success";
@@ -494,18 +495,21 @@ function getBoardActionFlags(infraItem: Item) {
 
 function validateThemeItems(
   themeItems: ThemeParameter[]
-): ValidationResult<ThemeParameter[], Record<string, string[]>> {
+): ValidationResult<ThemeParameter[], ErrorObject[]> {
   try {
-    const errors: Record<string, string[]> = {};
+    const errors: ErrorObject[] = [];
     for (const themeItem of themeItems) {
       const name = themeItem.parameterName;
       const paramErrors = validateParameter(themeItem);
       if (paramErrors.length) {
-        errors[name] = [...paramErrors];
+        errors.push({
+          name,
+          errors: paramErrors,
+        });
       }
     }
 
-    return Object.keys(errors).length
+    return errors.length
       ? {
           status: "fail",
           data: errors,
@@ -555,7 +559,7 @@ async function getConfigGroup(configBID: string, groupName: string) {
 function processRoundItems(
   roundItems: Item[],
   infraFFNtoCID: Record<string, Record<string, string>>
-): ValidationResult<ValidatedRoundFields[], string[] | string[][]> {
+): ValidationResult<ValidatedRoundFields[]> {
   try {
     const roundsFields = getRoundItems(roundItems, infraFFNtoCID);
 
@@ -969,7 +973,7 @@ function processThemeGroup(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<ThemeParameter[], Record<string, string[]>> {
+): ValidationResult<ThemeParameter[], ErrorObject[]> {
   try {
     const themeItems = getThemeItems(
       themeGroup,
@@ -990,10 +994,7 @@ function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<
-  BonusOfferItem[] | NonBonusOfferItem[],
-  Record<string, string[]>
-> {
+): ValidationResult<BonusOfferItem[] | NonBonusOfferItem[], ErrorObject[]> {
   try {
     const { offers, isBonus } = getOfferItems(
       offerGroup,
@@ -1109,7 +1110,8 @@ function generateRegulations(
           name: `${regulation} ${tier}`,
           isChecked: regulations[regulation],
         });
-        if (ab) {//NOTE: If 0 then disable ab
+        if (ab) {
+          //NOTE: If 0 then disable ab
           allRegulations.push({
             name: `${regulation} ${tier}_B`,
             isChecked: regulations[regulation],
@@ -1223,14 +1225,6 @@ async function importCampaign(webhook: MondayWebHook) {
 
   const themeName = campaignDetails.data.theme;
   const offerName = campaignDetails.data.offer;
-
-  if (!themeName || EMPTY_SELECTS_ENUM.Theme === themeName) {
-    //TODO: Handle fail
-  }
-
-  if (!offerName || EMPTY_SELECTS_ENUM.Offer === offerName) {
-    //TODO: Handle fail
-  }
 
   const regulations = campaignDetails.data.regulations;
   const tiers = campaignDetails.data.tiers; //Comma-separated

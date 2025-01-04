@@ -5,6 +5,7 @@ import {
   isNumberInRange,
 } from "../helpers/validatorFunctions";
 import { ValidationResult } from "../server";
+import { ErrorObject } from "../types/campaignTypes";
 import {
   BonusOfferItem,
   NonBonusOfferItem,
@@ -174,9 +175,9 @@ export function validateBonus(offerItem: BonusOfferItem): string[] {
 
 export function validateOfferParameters(
   offerItems: BonusOfferItem[] | NonBonusOfferItem[]
-): ValidationResult<undefined, Record<string, string[]>> {
+): ValidationResult<undefined, ErrorObject[]> {
   try {
-    const errors: Record<string, string[]> = {};
+    const errors: ErrorObject[] = [];
 
     for (const offerItem of offerItems) {
       const name = offerItem.parameterName;
@@ -184,10 +185,13 @@ export function validateOfferParameters(
         ? validateParameter(offerItem)
         : [];
       if (paramErrors.length) {
-        errors[name] = paramErrors;
+        errors.push({
+          name,
+          errors: paramErrors,
+        });
       }
     }
-    return Object.keys(errors).length
+    return errors.length
       ? {
           status: "fail",
           data: errors,
@@ -205,18 +209,21 @@ export function validateOfferParameters(
 
 export function validateOfferBonuses(
   offerItems: BonusOfferItem[]
-): ValidationResult<ValidatedBonusOfferItem[], Record<string, string[]>> {
+): ValidationResult<ValidatedBonusOfferItem[], ErrorObject[]> {
   try {
-    const errors: Record<string, string[]> = {};
+    const errors: ErrorObject[] = [];
 
     for (const offerItem of offerItems) {
       const name = offerItem.parameterName;
       const offerErrors = validateBonus(offerItem);
       if (offerErrors.length) {
-        errors[name] = offerErrors;
+        errors.push({
+          name,
+          errors: offerErrors,
+        });
       }
     }
-    return Object.keys(errors).length
+    return errors.length
       ? {
           status: "fail",
           data: errors,
@@ -235,8 +242,8 @@ export function validateOfferBonuses(
 
 export function validateOfferSegments(
   offerItems: ValidatedBonusOfferItem[]
-): ValidationResult<ValidatedBonusOfferItem[], Record<string, string[]>> {
-  const errors: Record<string, string[]> = {};
+): ValidationResult<ValidatedBonusOfferItem[], ErrorObject[]> {
+  const errors: ErrorObject[] = [];
 
   //First transform offerItems to a segment: bonus type: bonuses schema for easier validation..
   const segmentBonuses: { [key: string]: { [key: string]: string | null } } =
@@ -251,9 +258,12 @@ export function validateOfferSegments(
   }
 
   const bonusTypesSet = new Set();
-  for(const offerItem of offerItems){
-    if(bonusTypesSet.has(offerItem.bonusType)){
-      errors.all = [`Duplicate bonus ${offerItem.bonusType} found`];
+  for (const offerItem of offerItems) {
+    if (bonusTypesSet.has(offerItem.bonusType)) {
+      errors.push({
+        name: "All",
+        errors: [`Duplicate bonus ${offerItem.bonusType} found`],
+      });
       continue;
     }
     bonusTypesSet.add(offerItem.bonusType);
@@ -272,7 +282,9 @@ export function validateOfferSegments(
 
     const gameGroupValue = bonuses[OFFER_TYPES.Offer_Game_Group];
     if (gameGroupValue !== undefined) {
-      const offerTypeValue = bonuses[OFFER_TYPES.Winning_Offering_Type] || bonuses[OFFER_TYPES.Bonus_Offer_Type];
+      const offerTypeValue =
+        bonuses[OFFER_TYPES.Winning_Offering_Type] ||
+        bonuses[OFFER_TYPES.Bonus_Offer_Type];
       if (offerTypeValue === undefined) {
         segmentErrors.push(`Offer type record is required.`);
       } else {
@@ -287,7 +299,12 @@ export function validateOfferSegments(
       }
     }
 
-    errors[segment] = segmentErrors;
+    if (segmentErrors.length) {
+      errors.push({
+        name: segment,
+        errors: segmentErrors,
+      });
+    }
   }
 
   return errors.length
@@ -300,4 +317,3 @@ export function validateOfferSegments(
         data: errors,
       };
 }
-
