@@ -32,12 +32,29 @@ import {
 } from "./types/offerTypes.js";
 import { validateParameter } from "./validators/parameterValidators.js";
 import { validateCampaignItem } from "./validators/campaignValidators.js";
-import { CampaignFields, Field } from "./types/campaignTypes.js";
+import {
+  CampaignFields,
+  Field,
+  Optional,
+} from "./types/campaignTypes.js";
 import { ConfigItem, ConfigItemField } from "./types/configTypes.js";
 import {
   validateCampaignConfigs,
   validateConfigItems,
 } from "./validators/configValidators.js";
+import {
+  DateCellValue,
+  DropdownCellValue,
+  HourCellValue,
+  NumberCellValue,
+  TimelineCellValue,
+} from "monstaa/dist/classes/Cell.js";
+import { ThemeParameter } from "./types/themeTypes.js";
+import { RoundFields, ValidatedRoundFields } from "./types/roundTypes.js";
+import {
+  validateCampaignRounds,
+  validateRoundItems,
+} from "./validators/roundValidators.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -148,145 +165,100 @@ export type ValidationResult<T = undefined, U = string[]> =
       message: string;
     };
 
-function validateRoundItem(
-  roundFields: RoundFields,
+function getRoundItems(
+  roundItems: Item[],
   infraFFNtoCID: Record<string, Record<string, string>>
-): ValidationResult<ValidatedRoundFields> {
-  try {
-    const errors: string[] = [];
-
-    if (roundFields.name === undefined) {
-      errors.push(`Round name is unconfigured.`);
-    }
-    if (roundFields.name === null || roundFields.name === "") {
-      errors.push(`Round name is blank or missing.`);
-    }
-
-    if (roundFields.roundType === undefined) {
-      errors.push(`Round type is unconfigured.`);
-    }
-    if (
-      roundFields.roundType !== undefined &&
-      (roundFields.roundType === null ||
-        !Object.values(ROUND_TYPES).includes(roundFields.roundType))
-    ) {
-      errors.push(`Round type is missing.`);
-    }
-
-    if (roundFields.startDate === undefined) {
-      errors.push(`Round start date is unconfigured.`);
-    }
-    if (roundFields.startDate === null) {
-      errors.push(`Round start date is missing.`);
-    }
-
-    // TODO: Validate start date and end date based on is one time
-    // if (roundFields.startDate && roundFields.endDate){
-    //   const start = new Date(roundFields.startDate);
-    //   const end = new Date(roundFields.endDate);
-
-    //   if(start > end){
-    //     errors.push(`Round end date`)
-    //   }
-    // }
-
-    //End round date can be null if is one time is checked, this will be in inter-campaign & round-validation
-
-    //No need to validate omg,sms,push,email hours because Monday field will always return a valid value
-    return errors.length
-      ? {
-          status: "fail",
-          data: errors,
-        }
-      : {
-          status: "success",
-          data: roundFields as ValidatedRoundFields,
-        };
-  } catch (err) {
-    return {
-      status: "error",
-      message: (err as Error).message,
-    };
+): RoundFields[] {
+  const roundsObject: RoundFields[] = [];
+  for (const roundItem of roundItems) {
+    const roundFields = getRoundFields(roundItem, infraFFNtoCID);
+    roundsObject.push(roundFields);
   }
+  return roundsObject;
 }
-
-interface RoundFields {
-  name: Field<string>;
-  roundType: Field<string>;
-  startDate: Field<string>;
-  endDate: Field<string>;
-  emailScheduleHour: Field<string>;
-  SMSScheduleHour: Field<string>;
-  OMGScheduleHour: Field<string>;
-  pushScheduleHour: Field<string>;
-  isOneTime: Field<boolean>;
-  tysonRound: Field<number>;
-}
-interface ValidatedRoundFields {
-  name: string;
-  roundType: "Intro" | "Reminder 1" | "Reminder 2";
-  startDate: string;
-  endDate: Field<string>;
-  emailScheduleHour: Field<string>;
-  SMSScheduleHour: Field<string>;
-  OMGScheduleHour: Field<string>;
-  pushScheduleHour: Field<string>;
-  isOneTime: Field<boolean>;
-  tysonRound: Field<number>;
-}
-
-//TODO: All missing/invalid config errors must show at the retrieval level
 function getRoundFields(
   roundItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>
 ): RoundFields {
+  const missingConfigs: string[] = [];
   const roundTypeCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Type];
-  const roundType = roundTypeCID
-    ? (roundItem.values[roundTypeCID] as string)
-    : undefined;
 
   const startDateCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_Start_Date];
 
-  const startDate = startDateCID
-    ? (roundItem.values[startDateCID] as string)
-    : undefined;
-
   const endDateCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Round_End_Date];
 
-  const endDate = endDateCID
-    ? (roundItem.values[endDateCID] as string)
-    : undefined;
+  const tysonRoundCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Tyson_Round_ID];
+
+  if (roundTypeCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Round_Type);
+  }
+  if (startDateCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Round_Start_Date);
+  }
+  if (endDateCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Round_End_Date);
+  }
+  if (tysonRoundCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Tyson_Round_ID);
+  }
+
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-configuration", missingConfigs);
+  }
+
+  const roundType = roundItem.values[roundTypeCID] as string;
+  const startDate = roundItem.values[startDateCID] as DateCellValue;
+  const endDate = roundItem.values[endDateCID] as DateCellValue;
+  const tysonRound = roundItem.values[tysonRoundCID] as string;
+
+  if (roundType === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Round_Type);
+  }
+  if (startDate === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Round_Start_Date);
+  }
+  if (endDate === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Round_End_Date);
+  }
+  if (tysonRound === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Tyson_Round_ID);
+  }
+
+  if (missingConfigs.length) {
+    throw new ConfigError("missing-column", missingConfigs);
+  }
 
   //If empty string, use the config board...
   const emailScheduleHourCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Email_Hour];
 
   const emailScheduleHour = emailScheduleHourCID
-    ? (roundItem.values[emailScheduleHourCID] as string)
+    ? (roundItem.values[emailScheduleHourCID] as HourCellValue)
     : undefined;
 
   const SMSScheduleHourCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.SMS_Hour];
 
   const SMSScheduleHour = SMSScheduleHourCID
-    ? (roundItem.values[SMSScheduleHourCID] as string)
+    ? (roundItem.values[SMSScheduleHourCID] as HourCellValue)
     : undefined;
 
   const OMGScheduleHourCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.OMG_Hour];
 
   const OMGScheduleHour = OMGScheduleHourCID
-    ? (roundItem.values[OMGScheduleHourCID] as string)
+    ? (roundItem.values[OMGScheduleHourCID] as HourCellValue)
     : undefined;
 
   const pushScheduleHourCID =
     infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Push_Hour];
 
   const pushScheduleHour = pushScheduleHourCID
-    ? (roundItem.values[pushScheduleHourCID] as string)
+    ? (roundItem.values[pushScheduleHourCID] as HourCellValue)
     : undefined;
 
   const isOneTimeCID =
@@ -296,13 +268,6 @@ function getRoundFields(
 
   const isOneTime = isOneTimeCID
     ? (roundItem.values[isOneTimeCID] as boolean)
-    : undefined;
-
-  const tysonRoundCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Round][FRIENDLY_FIELD_NAMES.Tyson_Round_ID];
-
-  const tysonRound = tysonRoundCID
-    ? (roundItem.values[tysonRoundCID] as number)
     : undefined;
 
   return {
@@ -344,13 +309,16 @@ async function getCampaignFields(
   const abCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.AB];
 
-  const tiersCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
-
   const statusCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Campaign_Status
     ];
+
+  const themeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Theme];
+
+  const offerCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Offer];
 
   const personCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Person];
@@ -366,19 +334,30 @@ async function getCampaignFields(
     missingConfigs.push(FRIENDLY_FIELD_NAMES.Person);
   }
 
+  if (offerCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Offer);
+  }
+
+  if (themeCID === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Theme);
+  }
+
   if (missingConfigs.length) {
     throw new ConfigError("missing-configuration", missingConfigs);
   }
 
-  const dateRange = campaignItem.values[dateRangeCID] as
-    | [string, string]
-    | undefined;
+  const tiersCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
 
-  const status = campaignItem.values[statusCID] as string | undefined;
+  const dateRange = campaignItem.values[dateRangeCID] as TimelineCellValue;
+  const status = campaignItem.values[statusCID] as string;
 
   const personObject = campaignItem.cells[personCID].rawValue as
     | Record<string, any>
     | undefined;
+
+  const theme = campaignItem.values[themeCID] as string;
+  const offer = campaignItem.values[offerCID] as string;
 
   //Validate missing columns
   if (dateRange === undefined) {
@@ -396,18 +375,21 @@ async function getCampaignFields(
   if (missingConfigs.length) {
     throw new ConfigError("missing-column", missingConfigs);
   }
-  const [startDate, endDate] = dateRange!;
+  const { from: startDate, to: endDate } = dateRange!;
 
-  const ab = abCID ? (campaignItem.values[abCID] as number) : undefined;
+  const ab = abCID
+    ? (campaignItem.values[abCID] as NumberCellValue)
+    : undefined;
 
   const tiers = tiersCID
-    ? (campaignItem.values[tiersCID] as string[])
+    ? (campaignItem.values[tiersCID] as DropdownCellValue)
     : undefined;
 
   const controlGroupCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Control_Group];
+
   const controlGroup = controlGroupCID
-    ? (campaignItem.values[controlGroupCID] as number)
+    ? (campaignItem.values[controlGroupCID] as NumberCellValue)
     : undefined;
 
   const isOneTimeCampaignCID =
@@ -463,28 +445,14 @@ async function getCampaignFields(
 
     const regulationCID = regulation.values[ENV.INFRA.CIDS.COLUMN_ID] as string;
 
+    //TODO: Change this to only include checked regulations
     const isRegulationChecked = Boolean(
       allMarketsChecked || campaignItem.values[regulationCID]
     );
-
     regulations[regulationName] = isRegulationChecked;
   }
 
   const user = await mondayClient.getUser(personObject!.personsAndTeams[0].id);
-
-  const themeCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Theme];
-
-  const theme = themeCID
-    ? (campaignItem.values[themeCID] as string)
-    : undefined;
-
-  const offerCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Offer];
-
-  const offer = offerCID
-    ? (campaignItem.values[offerCID] as string)
-    : undefined;
 
   return {
     name: campaignItem.name,
@@ -494,7 +462,7 @@ async function getCampaignFields(
     tiers,
     controlGroup,
     regulations,
-    status: status!,
+    status,
     user,
     theme,
     offer,
@@ -587,36 +555,25 @@ async function getConfigGroup(configBID: string, groupName: string) {
 function processRoundItems(
   roundItems: Item[],
   infraFFNtoCID: Record<string, Record<string, string>>
-): ValidationResult<
-  Record<string, ValidatedRoundFields>,
-  Record<string, string[]>
-> {
+): ValidationResult<ValidatedRoundFields[], string[] | string[][]> {
   try {
-    const roundErrors: Record<string, string[]> = {};
-    const roundFieldsObj: Record<string, ValidatedRoundFields> = {};
+    const roundsFields = getRoundItems(roundItems, infraFFNtoCID);
 
-    for (let i = 0; i < roundItems.length; i++) {
-      const roundItem = roundItems[i];
-      const roundFields = getRoundFields(roundItem, infraFFNtoCID);
-      const validationResult = validateRoundItem(roundFields, infraFFNtoCID);
-      if (validationResult.status === "error") {
-        return validationResult;
-      } else if (validationResult.status === "fail") {
-        roundErrors[roundItem.name] = validationResult.data;
-      } else {
-        roundFieldsObj[roundItem.name] = validationResult.data;
-      }
+    const validateCampaignRoundsResult = validateCampaignRounds(roundsFields);
+
+    if (validateCampaignRoundsResult.status !== "success") {
+      return validateCampaignRoundsResult;
+    }
+    const validationResult = validateRoundItems(roundsFields);
+
+    if (validationResult.status !== "success") {
+      return validationResult;
     }
 
-    return Object.keys(roundErrors).length
-      ? {
-          status: "fail",
-          data: roundErrors,
-        }
-      : {
-          status: "success",
-          data: roundFieldsObj,
-        };
+    return {
+      status: "success",
+      data: validationResult.data,
+    };
   } catch (err) {
     return {
       status: "error",
@@ -638,16 +595,14 @@ async function processCampaignItem(
     );
     const validationResult = validateCampaignItem(campaignFields);
 
-    if (validationResult.status === "error") {
+    if (validationResult.status !== "success") {
       return validationResult;
-    } else if (validationResult.status === "fail") {
-      return validationResult;
-    } else {
-      return {
-        status: "success",
-        data: campaignFields,
-      };
     }
+
+    return {
+      status: "success",
+      data: campaignFields,
+    };
   } catch (err) {
     console.error((err as Error).stack);
     return {
@@ -656,14 +611,6 @@ async function processCampaignItem(
     };
   }
   //VALIDATION LAYER
-}
-interface ThemeParameter {
-  parameterName: string;
-  parameterType: string;
-  communicationType: string;
-  values: {
-    [key: string]: string | null;
-  };
 }
 
 //NOTE: Can throw error for not existing required config keys
@@ -1148,8 +1095,8 @@ interface Regulation {
 
 function generateRegulations(
   regulations: Record<string, boolean>,
-  tiersList: Field<string[]>,
-  ab: Field<number>
+  tiersList: Optional<DropdownCellValue>,
+  ab: Optional<NumberCellValue>
 ): Regulation[] {
   //if tiers is undefined (not declared in infra boards)
   //we will just use the regulations as is.
@@ -1162,7 +1109,7 @@ function generateRegulations(
           name: `${regulation} ${tier}`,
           isChecked: regulations[regulation],
         });
-        if (ab) {
+        if (ab) {//NOTE: If 0 then disable ab
           allRegulations.push({
             name: `${regulation} ${tier}_B`,
             isChecked: regulations[regulation],
@@ -1340,7 +1287,6 @@ async function importCampaign(webhook: MondayWebHook) {
   console.log(JSON.stringify(offerDetails.data, null, 2));
 }
 
-// Run the server!
 try {
   await fastify.listen({ port: 6000 });
 } catch (err) {
