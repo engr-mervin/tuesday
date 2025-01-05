@@ -1296,10 +1296,7 @@ async function importCampaign(webhook: MondayWebHook) {
     return;
   }
 
-  console.log(JSON.stringify(campaignDetails.data, null, 2));
-  console.log(JSON.stringify(roundDetails.data!, null, 2));
-  console.log(JSON.stringify(themeDetails.data!, null, 2));
-  console.log(JSON.stringify(offerDetails.data!, null, 2));
+  //Start inter-board validation
 }
 
 try {

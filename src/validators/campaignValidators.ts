@@ -40,9 +40,11 @@ export function validateCampaignItem(
   }
 
   if (
-    ![CAMPAIGN_STATUSES.Draft, CAMPAIGN_STATUSES.Ready_For_Tyson].includes(
-      campaignFields.status
-    )
+    ![
+      CAMPAIGN_STATUSES.Draft,
+      CAMPAIGN_STATUSES.Ready_For_Tyson,
+      CAMPAIGN_STATUSES.Error,
+    ].includes(campaignFields.status)
   ) {
     errors.push(`Campaign status should be either draft/ready for tyson.`);
   }
