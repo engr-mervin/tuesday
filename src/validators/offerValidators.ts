@@ -1,11 +1,10 @@
-import { BONUS_TYPES, OFFER_TYPES } from "../constants/INFRA";
+import { BONUS_TYPES, OFFER_TYPES } from "../constants/infraConstants";
 import {
   isInteger,
   isIntegerInRange,
   isNumberInRange,
 } from "../helpers/validatorFunctions";
-import { ValidationResult } from "../server";
-import { ErrorObject } from "../types/campaignTypes";
+import { ErrorObject, ValidationResult } from "../types/generalTypes";
 import {
   BonusOfferItem,
   NonBonusOfferItem,
@@ -175,69 +174,53 @@ export function validateBonus(offerItem: BonusOfferItem): string[] {
 
 export function validateOfferParameters(
   offerItems: BonusOfferItem[] | NonBonusOfferItem[]
-): ValidationResult<undefined, ErrorObject[]> {
-  try {
-    const errors: ErrorObject[] = [];
+): ValidationResult {
+  const errors: ErrorObject[] = [];
 
-    for (const offerItem of offerItems) {
-      const name = offerItem.parameterName;
-      const paramErrors = offerItem.useAsCom
-        ? validateParameter(offerItem)
-        : [];
-      if (paramErrors.length) {
-        errors.push({
-          name,
-          errors: paramErrors,
-        });
-      }
+  for (const offerItem of offerItems) {
+    const name = offerItem.parameterName;
+    const paramErrors = offerItem.useAsCom ? validateParameter(offerItem) : [];
+    if (paramErrors.length) {
+      errors.push({
+        name,
+        errors: paramErrors,
+      });
     }
-    return errors.length
-      ? {
-          status: "fail",
-          data: errors,
-        }
-      : {
-          status: "success",
-        };
-  } catch (err) {
-    return {
-      status: "error",
-      message: (err as Error).message,
-    };
   }
+  return errors.length
+    ? {
+        status: "fail",
+        data: errors,
+      }
+    : {
+        status: "success",
+      };
 }
 
 export function validateOfferBonuses(
   offerItems: BonusOfferItem[]
 ): ValidationResult<ValidatedBonusOfferItem[], ErrorObject[]> {
-  try {
-    const errors: ErrorObject[] = [];
+  const errors: ErrorObject[] = [];
 
-    for (const offerItem of offerItems) {
-      const name = offerItem.parameterName;
-      const offerErrors = validateBonus(offerItem);
-      if (offerErrors.length) {
-        errors.push({
-          name,
-          errors: offerErrors,
-        });
-      }
+  for (const offerItem of offerItems) {
+    const name = offerItem.parameterName;
+    const offerErrors = validateBonus(offerItem);
+    if (offerErrors.length) {
+      errors.push({
+        name,
+        errors: offerErrors,
+      });
     }
-    return errors.length
-      ? {
-          status: "fail",
-          data: errors,
-        }
-      : {
-          status: "success",
-          data: offerItems as ValidatedBonusOfferItem[],
-        };
-  } catch (err) {
-    return {
-      status: "error",
-      message: (err as Error).message,
-    };
   }
+  return errors.length
+    ? {
+        status: "fail",
+        data: errors,
+      }
+    : {
+        status: "success",
+        data: offerItems as ValidatedBonusOfferItem[],
+      };
 }
 
 export function validateOfferSegments(

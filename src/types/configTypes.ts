@@ -2,7 +2,7 @@
 //discriminant
 //Will include neptune/pacman/promocode/promotion page/banner/etc
 
-import { CONFIGURATION_TYPES } from "../constants/INFRA";
+import { CONFIGURATION_TYPES } from "../constants/infraConstants";
 import { Round } from "./campaignTypes";
 
 //TODO:

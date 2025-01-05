@@ -5,7 +5,7 @@ import { QueryLevel } from "monstaa/dist/types/types.js";
 import { MondayWebHook } from "./types/mondayWebhook.js";
 import { Item } from "monstaa/dist/classes/Item.js";
 import { Group } from "monstaa/dist/classes/Group.js";
-import { CAMPAIGN_NAME_REGEX } from "./constants/REGEXES.js";
+import { CAMPAIGN_NAME_REGEX } from "./constants/regexConstants.js";
 import {
   PARAMETER_LEVEL,
   FRIENDLY_FIELD_NAMES,
@@ -14,7 +14,7 @@ import {
   CONFIGURATION_COLUMN_NAMES,
   EMPTY_SELECTS_ENUM,
   COMPLEX_OFFER_TYPES,
-} from "./constants/INFRA.js";
+} from "./constants/infraConstants.js";
 import { addDays, getToday } from "./helpers/dateFunctions.js";
 import { getItemsFromInfraMapping } from "./helpers/infraFunctions.js";
 import { ConfigError } from "./errors/configError.js";
@@ -32,12 +32,7 @@ import {
 } from "./types/offerTypes.js";
 import { validateParameter } from "./validators/parameterValidators.js";
 import { validateCampaignItem } from "./validators/campaignValidators.js";
-import {
-  CampaignFields,
-  ErrorObject,
-  Field,
-  Optional,
-} from "./types/campaignTypes.js";
+import { CampaignFields } from "./types/campaignTypes.js";
 import { ConfigItem, ConfigItemField } from "./types/configTypes.js";
 import {
   validateCampaignConfigs,
@@ -56,6 +51,12 @@ import {
   validateCampaignRounds,
   validateRoundItems,
 } from "./validators/roundValidators.js";
+import {
+  ErrorObject,
+  FailedValidationResult,
+  Optional,
+  ValidationResult,
+} from "./types/generalTypes.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -75,6 +76,15 @@ fastify.post("/import-campaign", async function handler(request, reply) {
     console.error((error as Error).stack);
   }
   reply.code(200).send({ status: "ok" });
+});
+
+fastify.post("/send-update", async function handler(request, reply) {
+  //BR works
+  //LI, OL, UL
+  //H1-H6
+  //PADDING FONTSIZE WORKS
+  //BORDER DOES NOT
+  //CAN USE IMG
 });
 
 async function getThemeGroup(
@@ -146,25 +156,6 @@ async function getOfferGroup(
 
   return offerGroup;
 }
-
-//Fail means
-export type ValidationResult<T = undefined, U = ErrorObject[]> =
-  | (T extends undefined
-      ? {
-          status: "success";
-        }
-      : {
-          status: "success";
-          data: T;
-        })
-  | {
-      status: "fail";
-      data: U;
-    }
-  | {
-      status: "error";
-      message: string;
-    };
 
 function getRoundItems(
   roundItems: Item[],
@@ -495,7 +486,7 @@ function getBoardActionFlags(infraItem: Item) {
 
 function validateThemeItems(
   themeItems: ThemeParameter[]
-): ValidationResult<ThemeParameter[], ErrorObject[]> {
+): ValidationResult<ThemeParameter[]> {
   try {
     const errors: ErrorObject[] = [];
     for (const themeItem of themeItems) {
@@ -521,7 +512,8 @@ function validateThemeItems(
   } catch (err) {
     return {
       status: "error",
-      message: (err as Error).message,
+      error: err as Error,
+      origin: "Config"
     };
   }
 }
@@ -581,7 +573,8 @@ function processRoundItems(
   } catch (err) {
     return {
       status: "error",
-      message: (err as Error).message,
+      error: err as Error,
+      origin: "Config"
     };
   }
 }
@@ -608,10 +601,10 @@ async function processCampaignItem(
       data: campaignFields,
     };
   } catch (err) {
-    console.error((err as Error).stack);
     return {
       status: "error",
-      message: (err as Error).message,
+      error: err as Error,
+      origin: "Config"
     };
   }
   //VALIDATION LAYER
@@ -973,7 +966,7 @@ function processThemeGroup(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<ThemeParameter[], ErrorObject[]> {
+): ValidationResult<ThemeParameter[]> {
   try {
     const themeItems = getThemeItems(
       themeGroup,
@@ -985,7 +978,8 @@ function processThemeGroup(
   } catch (err) {
     return {
       status: "error",
-      message: (err as Error).message,
+      error: err as Error,
+      origin: "Config"
     };
   }
 }
@@ -994,7 +988,7 @@ function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<BonusOfferItem[] | NonBonusOfferItem[], ErrorObject[]> {
+): ValidationResult<BonusOfferItem[] | NonBonusOfferItem[]> {
   try {
     const { offers, isBonus } = getOfferItems(
       offerGroup,
@@ -1035,7 +1029,8 @@ function processOfferGroup(
   } catch (err) {
     return {
       status: "error",
-      message: (err as Error).message,
+      error: err as Error,
+      origin: "Config"
     };
   }
 }
@@ -1045,7 +1040,7 @@ async function processConfigGroup(
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
 ): Promise<
-  ValidationResult<ConfigItem[], Record<string, string[]> | string[]>
+  ValidationResult<ConfigItem[]>
 > {
   try {
     const configItems = await getConfigItems(
@@ -1073,10 +1068,10 @@ async function processConfigGroup(
       data: configItems,
     };
   } catch (err) {
-    console.error((err as Error).stack);
     return {
       status: "error",
-      message: (err as Error).message,
+      error: err as Error,
+      origin: "Config"
     };
   }
 }
@@ -1092,6 +1087,27 @@ async function processConfigGroup(
 interface Regulation {
   name: string;
   isChecked: boolean;
+}
+
+function generateErrorReportString(name: string, id: string) {
+  return `<ol><li><h4>${name}</h4><ol><li><p>Encountered internal error while handling the request: ${id}</ol></li></p></li></ol>`;
+}
+
+function generateReportString(errorObjects: (ErrorObject | string)[]): string {
+  let resultString = "";
+  resultString += `<ol>`;
+  for (const errorObject of errorObjects) {
+    if (typeof errorObject === "string") {
+      resultString += `<li><p>${errorObject}</p></li>`;
+      continue;
+    }
+    resultString += `<li><h4>${errorObject.name}</h4></li>`;
+
+    resultString += generateReportString(errorObject.errors);
+  }
+  resultString += `</ol>`;
+
+  return resultString;
 }
 
 function generateRegulations(
@@ -1145,6 +1161,21 @@ async function getInfraBoard() {
     queryLevel: QueryLevel.Cell,
     subitemLevel: "none",
   });
+}
+
+async function processFail(failedDetails: FailedValidationResult<ErrorObject[]>[], itemId: number) {
+  let reportString = ``;
+  for(const details of failedDetails){
+    if (details.status === "fail") {
+      reportString += generateReportString(details.data);
+    } else if (details.status === "error") {
+      const newId = crypto.randomUUID();
+      reportString += generateErrorReportString("Campaign", newId);
+      //TODO:Improve log structure.
+      console.error(`PROCESS_CAMPAIGN_ITEM`, newId, details.error.message, details.error.stack);
+    }
+  }
+  await mondayClient.writeUpdate(itemId, reportString);
 }
 
 async function importCampaign(webhook: MondayWebHook) {
@@ -1209,11 +1240,8 @@ async function importCampaign(webhook: MondayWebHook) {
     infraMapping
   );
 
-  if (campaignDetails.status === "fail") {
-    //TODO: generate report
-    return;
-  } else if (campaignDetails.status === "error") {
-    //TODO: error handling here
+  if (campaignDetails.status !== "success") {
+    await processFail([campaignDetails], campaignPID);
     return;
   }
 
@@ -1259,26 +1287,19 @@ async function importCampaign(webhook: MondayWebHook) {
     allRegulations
   );
 
-  if (
-    themeDetails.status === "error" ||
-    offerDetails.status === "error" ||
-    roundDetails.status === "error"
-  ) {
-    //generate report
-    return;
-  } else if (
-    themeDetails.status === "fail" ||
-    offerDetails.status === "fail" ||
-    roundDetails.status === "fail"
-  ) {
-    //error handling here
+
+  const allDetails = [roundDetails, themeDetails, offerDetails, configDetails];
+  const failedDetails = allDetails.filter((details) => details.status !== 'success');
+  
+  if(failedDetails.length > 0){
+    await processFail(failedDetails, campaignPID);
     return;
   }
 
   console.log(JSON.stringify(campaignDetails.data, null, 2));
-  console.log(JSON.stringify(roundDetails.data, null, 2));
-  console.log(JSON.stringify(themeDetails.data, null, 2));
-  console.log(JSON.stringify(offerDetails.data, null, 2));
+  console.log(JSON.stringify(roundDetails.data!, null, 2));
+  console.log(JSON.stringify(themeDetails.data!, null, 2));
+  console.log(JSON.stringify(offerDetails.data!, null, 2));
 }
 
 try {

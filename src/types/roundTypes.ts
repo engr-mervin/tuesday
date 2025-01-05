@@ -1,5 +1,5 @@
 import { DateCellValue, HourCellValue } from "monstaa/dist/classes/Cell";
-import { Optional } from "./campaignTypes";
+import { Optional } from "./generalTypes";
 
 export interface RoundFields {
   name: string;

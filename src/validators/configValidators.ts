@@ -22,8 +22,8 @@ import {
   REQUIRED_PROMO_META_CLASSIFICATIONS,
   REQUIRED_PROMO_TEXT_CLASSIFICATIONS,
   ROUND_TYPES,
-} from "../constants/INFRA";
-import { BANNER_REGEX } from "../constants/REGEXES";
+} from "../constants/infraConstants";
+import { BANNER_REGEX } from "../constants/regexConstants";
 import { arrayToCommaSeparatedList } from "../helpers/stringFunctions";
 import {
   isCommaSeparatedListOfIntegers,
@@ -35,19 +35,19 @@ import {
   isStringOfLength,
   isValidTime,
 } from "../helpers/validatorFunctions";
-import { ValidationResult } from "../server";
-import { Round } from "../types/campaignTypes";
 import {
   ConfigItem,
   ConfigItemField,
   ValidatedConfigItem,
 } from "../types/configTypes";
+import { ErrorObject, ValidationResult } from "../types/generalTypes";
 import { validateParameter } from "./parameterValidators";
+import { Round } from "./roundValidators";
 
 export function validateConfigItems(
   configItems: ConfigItem[]
-): ValidationResult<ValidatedConfigItem[], Record<string, string[]>> {
-  const errors: Record<string, string[]> = {};
+): ValidationResult<ValidatedConfigItem[]> {
+  const errors: ErrorObject[] = [];
 
   for (let i = 0; i < configItems.length; i++) {
     const configItem = configItems[i];
@@ -55,9 +55,10 @@ export function validateConfigItems(
     const allowedTypes = Object.values(CONFIGURATION_TYPES);
 
     if (!allowedTypes.includes(configItem.type)) {
-      errors[configItem.name] = [
-        `Configuration Type is either missing or not supported`,
-      ];
+      errors.push({
+        name: configItem.name,
+        errors: [`Configuration Type is either missing or not supported`],
+      });
       continue;
     }
 
@@ -65,7 +66,10 @@ export function validateConfigItems(
     const configErrors = validator(configItem);
 
     if (configErrors.length) {
-      errors[configItem.name] = configErrors;
+      errors.push({
+        name: configItem.name,
+        errors,
+      });
     }
   }
   return errors.length
@@ -78,9 +82,9 @@ export function validateConfigItems(
 
 export function validateCampaignConfigs(
   configItems: ValidatedConfigItem[]
-): ValidationResult<undefined, string[]> {
+): ValidationResult {
   //Validate config items that can only have one record...
-  const campaignConfigErrors = [];
+  const errors = [];
   const configSet = new Set();
 
   //NOTE: Currently not round scoped
@@ -92,9 +96,7 @@ export function validateCampaignConfigs(
   for (const configItem of configItems) {
     if (uniqueConfigs.includes(configItem.type)) {
       if (configSet.has(configItem.type)) {
-        campaignConfigErrors.push(
-          `${configItem.type} should only have one record.`
-        );
+        errors.push(`${configItem.type} should only have one record.`);
       }
 
       configSet.add(configItem.type);
@@ -116,7 +118,7 @@ export function validateCampaignConfigs(
     const uniqueIdentifier = `${configItem.type}___${configItem.name}`;
     if (uniqueNameConfigs.includes(configItem.type)) {
       if (configNameSet.has(uniqueIdentifier)) {
-        campaignConfigErrors.push(
+        errors.push(
           `Two or more ${configItem.type} records have the same name: ${configItem.name}.`
         );
       }
@@ -144,7 +146,7 @@ export function validateCampaignConfigs(
     const uniqueIdentifier = `${configItem.round}__${configItem.type}___${configItem.fieldName}`;
     if (uniqueFieldConfigs.includes(configItem.type)) {
       if (configFieldSet.has(uniqueIdentifier)) {
-        campaignConfigErrors.push(
+        errors.push(
           `Two or more ${configItem.type} records have the same field name: ${configItem.fieldName}.`
         );
       }
@@ -163,7 +165,7 @@ export function validateCampaignConfigs(
   );
 
   if (neptuneBind && !neptuneConfig) {
-    campaignConfigErrors.push(
+    errors.push(
       `Neptune bind requires at least one neptune config definition.`
     );
   }
@@ -182,15 +184,20 @@ export function validateCampaignConfigs(
   );
 
   if ((promoImage || promoCTA || promoText) && !promoConfig) {
-    campaignConfigErrors.push(
+    errors.push(
       `Promotion elements defined but missing Promotion Configuration item.`
     );
   }
 
-  return campaignConfigErrors.length
+  return errors.length
     ? {
         status: "fail",
-        data: campaignConfigErrors,
+        data: [
+          {
+            name: "Campaign Configs",
+            errors,
+          },
+        ],
       }
     : {
         status: "success",
@@ -673,7 +680,7 @@ export const configValidationRules: Record<
     const { fieldName, segments } = configItem;
     const errors = [];
     const values = Object.values(segments);
-    
+
     if (!Object.values(ROUND_TYPES).includes(configItem.round as Round)) {
       errors.push(`Round type is invalid: ${configItem.round}`);
     }

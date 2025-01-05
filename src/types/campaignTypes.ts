@@ -1,6 +1,7 @@
 import { User } from "monstaa/dist/classes/User";
-import { CAMPAIGN_STATUSES } from "../constants/INFRA";
+import { CAMPAIGN_STATUSES } from "../constants/infraConstants";
 import { DropdownCellValue, NumberCellValue } from "monstaa/dist/classes/Cell";
+import { Optional } from "./generalTypes";
 
 //Get fields will validate existence,
 //Validation will validate validity of values
@@ -25,17 +26,7 @@ export interface CampaignFields {
     }
   >;
 }
-export type Field<T> = T | undefined;
-//NOTE: The decision to use Optional type instead of optional field "?" syntax
-//is for the code to be more explicit that these fields are optional, furthermore, if we use "?"
-//syntax, then adding those fields to the object will result in more cluttered code:
-//e.g. if(field){obj[field] = value}, as compared to just declaring the whole object in one place.
-export type Optional<T> = T | undefined;
 
-export interface ErrorObject {
-  name: string;
-  errors: string[] | ErrorObject[]
-}
 
 export interface ValidatedCampaignFields {
   name: string;
