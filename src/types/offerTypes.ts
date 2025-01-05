@@ -1,4 +1,4 @@
-import { OFFER_TYPES } from "../constants/infraConstants";
+import { OFFER_TYPES } from "../constants/infraConstants.js";
 export type BonusOfferItem = {
   parameterName: string;
   useAsCom: boolean | undefined;

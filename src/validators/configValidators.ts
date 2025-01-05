@@ -22,9 +22,9 @@ import {
   REQUIRED_PROMO_META_CLASSIFICATIONS,
   REQUIRED_PROMO_TEXT_CLASSIFICATIONS,
   ROUND_TYPES,
-} from "../constants/infraConstants";
-import { BANNER_REGEX } from "../constants/regexConstants";
-import { arrayToCommaSeparatedList } from "../helpers/stringFunctions";
+} from "../constants/infraConstants.js";
+import { BANNER_REGEX } from "../constants/regexConstants.js";
+import { arrayToCommaSeparatedList } from "../helpers/stringFunctions.js";
 import {
   isCommaSeparatedListOfIntegers,
   isFloatInRange,
@@ -34,15 +34,15 @@ import {
   isNumberInRange,
   isStringOfLength,
   isValidTime,
-} from "../helpers/validatorFunctions";
+} from "../helpers/validatorFunctions.js";
 import {
   ConfigItem,
   ConfigItemField,
   ValidatedConfigItem,
-} from "../types/configTypes";
-import { ErrorObject, ValidationResult } from "../types/generalTypes";
-import { validateParameter } from "./parameterValidators";
-import { Round } from "./roundValidators";
+} from "../types/configTypes.js";
+import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
+import { validateParameter } from "./parameterValidators.js";
+import { Round } from "./roundValidators.js";
 
 export function validateConfigItems(
   configItems: ConfigItem[]

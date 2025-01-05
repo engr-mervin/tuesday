@@ -1,16 +1,15 @@
-import { randomUUID } from "crypto";
 import {
   CAMPAIGN_STATUSES,
   EMPTY_SELECTS_ENUM,
-} from "../constants/infraConstants";
-import { CAMPAIGN_NAME_REGEX } from "../constants/regexConstants";
-import { addDays, getToday } from "../helpers/dateFunctions";
-import { isInteger } from "../helpers/validatorFunctions";
+} from "../constants/infraConstants.js";
+import { CAMPAIGN_NAME_REGEX } from "../constants/regexConstants.js";
+import { addDays, getToday } from "../helpers/dateFunctions.js";
+import { isInteger } from "../helpers/validatorFunctions.js";
 import {
   CampaignFields,
   ValidatedCampaignFields,
 } from "../types/campaignTypes";
-import { ValidationResult } from "../types/generalTypes";
+import { ValidationResult } from "../types/generalTypes.js";
 
 export function validateCampaignItem(
   campaignFields: CampaignFields

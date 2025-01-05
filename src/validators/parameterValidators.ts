@@ -1,6 +1,6 @@
-import { LIMITS, PARAM_TYPES } from "../constants/infraConstants";
-import { PARAM_REGEX } from "../constants/regexConstants";
-import { isIntegerInRange } from "../helpers/validatorFunctions";
+import { LIMITS, PARAM_TYPES } from "../constants/infraConstants.js";
+import { PARAM_REGEX } from "../constants/regexConstants.js";
+import { isIntegerInRange } from "../helpers/validatorFunctions.js";
 
 export function validateParameter(parameter: {
   parameterName: string;

@@ -2,8 +2,8 @@
 //discriminant
 //Will include neptune/pacman/promocode/promotion page/banner/etc
 
-import { CONFIGURATION_TYPES } from "../constants/infraConstants";
-import { Round } from "../validators/roundValidators";
+import { CONFIGURATION_TYPES } from "../constants/infraConstants.js";
+import { Round } from "../validators/roundValidators.js";
 
 //TODO:
 //MondayOptionalField add undefined

@@ -1,5 +1,5 @@
-import { DateCellValue, HourCellValue } from "monstaa/dist/classes/Cell";
-import { Optional } from "./generalTypes";
+import { DateCellValue, HourCellValue } from "monstaa/dist/classes/Cell.js";
+import { Optional } from "./generalTypes.js";
 
 export interface RoundFields {
   name: string;

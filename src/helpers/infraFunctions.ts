@@ -1,4 +1,4 @@
-import { Item } from "monstaa/dist/classes/Item";
+import { Item } from "monstaa/dist/classes/Item.js";
 import { ENV } from "../config/envs.js";
 
 export function getItemsFromInfraMapping(

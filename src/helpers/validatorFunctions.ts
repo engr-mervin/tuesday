@@ -1,4 +1,4 @@
-import { BANNER_REGEX } from "../constants/regexConstants";
+import { BANNER_REGEX } from "../constants/regexConstants.js";
 
 //Will return true for empty strings
 export function isInteger(number: string | number | null): number is number {

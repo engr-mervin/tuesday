@@ -1,16 +1,16 @@
-import { BONUS_TYPES, OFFER_TYPES } from "../constants/infraConstants";
+import { BONUS_TYPES, OFFER_TYPES } from "../constants/infraConstants.js";
 import {
   isInteger,
   isIntegerInRange,
   isNumberInRange,
-} from "../helpers/validatorFunctions";
-import { ErrorObject, ValidationResult } from "../types/generalTypes";
+} from "../helpers/validatorFunctions.js";
+import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
 import {
   BonusOfferItem,
   NonBonusOfferItem,
   ValidatedBonusOfferItem,
-} from "../types/offerTypes";
-import { validateParameter } from "./parameterValidators";
+} from "../types/offerTypes.js";
+import { validateParameter } from "./parameterValidators.js";
 
 //NOTE: Return null if valid or error message...
 export const offerValidationRules: Record<

@@ -1,7 +1,7 @@
-import { User } from "monstaa/dist/classes/User";
-import { CAMPAIGN_STATUSES } from "../constants/infraConstants";
-import { DropdownCellValue, NumberCellValue } from "monstaa/dist/classes/Cell";
-import { Optional } from "./generalTypes";
+import { User } from "monstaa/dist/classes/User.js";
+import { CAMPAIGN_STATUSES } from "../constants/infraConstants.js";
+import { DropdownCellValue, NumberCellValue } from "monstaa/dist/classes/Cell.js";
+import { Optional } from "./generalTypes.js";
 
 //Get fields will validate existence,
 //Validation will validate validity of values

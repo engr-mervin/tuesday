@@ -1,6 +1,6 @@
-import { ROUND_TYPES } from "../constants/infraConstants";
-import { ErrorObject, ValidationResult } from "../types/generalTypes";
-import { RoundFields, ValidatedRoundFields } from "../types/roundTypes";
+import { ROUND_TYPES } from "../constants/infraConstants.js";
+import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
+import { RoundFields, ValidatedRoundFields } from "../types/roundTypes.js";
 
 export type Round = (typeof ROUND_TYPES)[keyof typeof ROUND_TYPES];
 
