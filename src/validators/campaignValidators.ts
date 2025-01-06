@@ -9,7 +9,24 @@ import {
   CampaignFields,
   ValidatedCampaignFields,
 } from "../types/campaignTypes";
+import { ConfigItem, ValidatedConfigItem } from "../types/configTypes.js";
 import { ValidationResult } from "../types/generalTypes.js";
+import {
+  BonusOfferItem,
+  NonBonusOfferItem,
+  ValidatedBonusOfferItem,
+  ValidatedNonBonusOfferItem,
+} from "../types/offerTypes.js";
+import { ValidatedRoundFields } from "../types/roundTypes.js";
+import { ThemeParameter } from "../types/themeTypes.js";
+
+export function interValidation(
+  campaignFields: ValidatedCampaignFields,
+  roundFields: ValidatedRoundFields[],
+  themeItems: ThemeParameter[],
+  offerItems: ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[],
+  configItems: ValidatedConfigItem[]
+)<ValidationResult> {}
 
 export function validateCampaignItem(
   campaignFields: CampaignFields

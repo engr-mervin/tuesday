@@ -82,7 +82,7 @@ export function validateConfigItems(
 
 export function validateCampaignConfigs(
   configItems: ValidatedConfigItem[]
-): ValidationResult {
+): ValidationResult<ValidatedConfigItem[]> {
   //Validate config items that can only have one record...
   const errors = [];
   const configSet = new Set();
@@ -201,6 +201,7 @@ export function validateCampaignConfigs(
       }
     : {
         status: "success",
+        data: configItems,
       };
 }
 

@@ -24,11 +24,23 @@ import {
   BonusOfferItem,
   GetOfferResult,
   NonBonusOfferItem,
+  ValidatedBonusOfferItem,
+  ValidatedNonBonusOfferItem,
 } from "./types/offerTypes.js";
 import { validateParameter } from "./validators/parameterValidators.js";
-import { validateCampaignItem } from "./validators/campaignValidators.js";
-import { CampaignFields } from "./types/campaignTypes.js";
-import { ConfigItem, ConfigItemField } from "./types/configTypes.js";
+import {
+  interValidation,
+  validateCampaignItem,
+} from "./validators/campaignValidators.js";
+import {
+  CampaignFields,
+  ValidatedCampaignFields,
+} from "./types/campaignTypes.js";
+import {
+  ConfigItem,
+  ConfigItemField,
+  ValidatedConfigItem,
+} from "./types/configTypes.js";
 import {
   validateCampaignConfigs,
   validateConfigItems,
@@ -52,6 +64,8 @@ import {
   Optional,
   ValidationResult,
 } from "./types/generalTypes.js";
+import { InfraError } from "./classes/InfraError.js";
+import { validateThemeItems } from "./validators/themeValidators.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -479,40 +493,6 @@ function getBoardActionFlags(infraItem: Item) {
   };
 }
 
-function validateThemeItems(
-  themeItems: ThemeParameter[]
-): ValidationResult<ThemeParameter[]> {
-  try {
-    const errors: ErrorObject[] = [];
-    for (const themeItem of themeItems) {
-      const name = themeItem.parameterName;
-      const paramErrors = validateParameter(themeItem);
-      if (paramErrors.length) {
-        errors.push({
-          name,
-          errors: paramErrors,
-        });
-      }
-    }
-
-    return errors.length
-      ? {
-          status: "fail",
-          data: errors,
-        }
-      : {
-          status: "success",
-          data: themeItems,
-        };
-  } catch (err) {
-    return {
-      status: "error",
-      error: err as Error,
-      origin: "Config"
-    };
-  }
-}
-
 async function getConfigGroup(configBID: string, groupName: string) {
   if (groupName === "Choose Offer") {
     throw new Error(`Offer field is empty.`);
@@ -566,11 +546,7 @@ function processRoundItems(
       data: validationResult.data,
     };
   } catch (err) {
-    return {
-      status: "error",
-      error: err as Error,
-      origin: "Config"
-    };
+    throw new InfraError("Round", err as Error);
   }
 }
 
@@ -578,7 +554,7 @@ async function processCampaignItem(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
   infraMapping: Record<string, Record<string, Item>>
-): Promise<ValidationResult<CampaignFields>> {
+): Promise<ValidationResult<ValidatedCampaignFields>> {
   try {
     const campaignFields = await getCampaignFields(
       campaignItem,
@@ -593,14 +569,10 @@ async function processCampaignItem(
 
     return {
       status: "success",
-      data: campaignFields,
+      data: campaignFields as ValidatedCampaignFields,
     };
   } catch (err) {
-    return {
-      status: "error",
-      error: err as Error,
-      origin: "Config"
-    };
+    throw new InfraError("Campaign", err as Error);
   }
   //VALIDATION LAYER
 }
@@ -971,11 +943,7 @@ function processThemeGroup(
 
     return validateThemeItems(themeItems);
   } catch (err) {
-    return {
-      status: "error",
-      error: err as Error,
-      origin: "Config"
-    };
+    throw new InfraError("Theme", err as Error);
   }
 }
 
@@ -983,7 +951,7 @@ function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<BonusOfferItem[] | NonBonusOfferItem[]> {
+): ValidationResult<ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[]> {
   try {
     const { offers, isBonus } = getOfferItems(
       offerGroup,
@@ -1022,11 +990,7 @@ function processOfferGroup(
       data: offers,
     };
   } catch (err) {
-    return {
-      status: "error",
-      error: err as Error,
-      origin: "Config"
-    };
+    throw new InfraError("Offer", err as Error);
   }
 }
 
@@ -1034,9 +998,7 @@ async function processConfigGroup(
   configGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Promise<
-  ValidationResult<ConfigItem[]>
-> {
+): Promise<ValidationResult<ValidatedConfigItem[], ErrorObject[]>> {
   try {
     const configItems = await getConfigItems(
       configGroup,
@@ -1046,28 +1008,40 @@ async function processConfigGroup(
 
     const validationResult = validateConfigItems(configItems);
 
-    if (validationResult.status !== "success") {
-      return validationResult;
+    if (validationResult.status === "fail") {
+      return {
+        status: "fail",
+        data: [
+          {
+            name: "Config",
+            errors: validationResult.data,
+          },
+        ],
+      };
     }
 
     const validateCampaignResult = validateCampaignConfigs(
       validationResult.data
     );
 
-    if (validateCampaignResult.status !== "success") {
-      return validateCampaignResult;
+    if (validateCampaignResult.status === "fail") {
+      return {
+        status: "fail",
+        data: [
+          {
+            name: "Config",
+            errors: validateCampaignResult.data,
+          },
+        ],
+      };
     }
 
     return {
       status: "success",
-      data: configItems,
+      data: validateCampaignResult.data,
     };
   } catch (err) {
-    return {
-      status: "error",
-      error: err as Error,
-      origin: "Config"
-    };
+    throw new InfraError("Config", err as Error);
   }
 }
 
@@ -1084,8 +1058,8 @@ interface Regulation {
   isChecked: boolean;
 }
 
-function generateErrorReportString(name: string, id: string) {
-  return `<ol><li><h4>${name}</h4><ol><li><p>Encountered internal error while handling the request: ${id}</ol></li></p></li></ol>`;
+function generateErrorReportString(infraError: InfraError) {
+  return `<ol><li><h4>${infraError.origin}</h4><ol><li><p>Encountered internal error while handling the request: ${infraError.id}</ol></li></p></li></ol>`;
 }
 
 function generateReportString(errorObjects: (ErrorObject | string)[]): string {
@@ -1158,140 +1132,194 @@ async function getInfraBoard() {
   });
 }
 
-async function processFail(failedDetails: FailedValidationResult<ErrorObject[]>[], itemId: number) {
+async function processError(
+  err: unknown,
+  defaultOrigin: string,
+  itemId?: number
+) {
+  let infraError: InfraError;
+  if (err instanceof InfraError) {
+    infraError = err;
+  } else if (err instanceof Error) {
+    infraError = new InfraError(defaultOrigin, err);
+  } else {
+    const error = new Error(String(err));
+    infraError = new InfraError(defaultOrigin, error);
+  }
+
+  const errorString = generateErrorReportString(infraError);
+  if (itemId) {
+    await mondayClient.writeUpdate(itemId, errorString);
+  }
+
+  //Log error
+  console.error(
+    `INFRA ERROR: ${infraError.id} - ${JSON.stringify({
+      stack: infraError.baseError.stack,
+      message: infraError.baseError.message,
+    })}`
+  );
+}
+
+async function processFail(
+  failedDetails: FailedValidationResult<ErrorObject[]>[],
+  itemId: number
+) {
   let reportString = ``;
-  for(const details of failedDetails){
-    if (details.status === "fail") {
-      reportString += generateReportString(details.data);
-    } else if (details.status === "error") {
-      const newId = crypto.randomUUID();
-      reportString += generateErrorReportString("Campaign", newId);
-      //TODO:Improve log structure.
-      console.error(`PROCESS_CAMPAIGN_ITEM`, newId, details.error.message, details.error.stack);
-    }
+  for (const details of failedDetails) {
+    reportString += generateReportString(details.data);
   }
   await mondayClient.writeUpdate(itemId, reportString);
 }
 
 async function importCampaign(webhook: MondayWebHook) {
-  const campaignPID = Number(webhook.event.pulseId);
-  const campaignBID = Number(webhook.event.boardId);
+  let campaignPID;
+  try {
+    campaignPID = Number(webhook.event.pulseId);
+    const campaignBID = Number(webhook.event.boardId);
 
-  const [infraBoard, campaignItem] = await Promise.all([
-    getInfraBoard(),
-    mondayClient.getItem(
-      { itemId: campaignPID },
-      { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }
-    ),
-  ]);
+    const [infraBoard, campaignItem] = await Promise.all([
+      getInfraBoard(),
+      mondayClient.getItem(
+        { itemId: campaignPID },
+        { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }
+      ),
+    ]);
 
-  if (!infraBoard) {
-    throw new Error(`Infra board not found.`);
-  }
-  if (!campaignItem) {
-    throw new Error(`Campaign item not found.`);
-  }
+    if (!infraBoard) {
+      throw new Error(`Infra board not found.`);
+    }
+    if (!campaignItem) {
+      throw new Error(`Campaign item not found.`);
+    }
 
-  const infraItem = infraBoard.items!.find(
-    (item) =>
-      Number(item.values![ENV.INFRA.ROOT_CIDS.CAMPAIGN_BOARD_ID]) ===
-      campaignBID
-  );
-
-  if (!infraItem) {
-    throw new Error(`Infra item not found.`);
-  }
-
-  if (!infraItem.cells) {
-    throw new Error(`Infra items not initialized.`);
-  }
-
-  await infraItem.update({
-    queryLevel: QueryLevel.Cell,
-    subitemLevel: QueryLevel.Cell,
-  });
-
-  const infraFFNtoCID: Record<string, Record<string, string>> = {};
-  const infraMapping: Record<string, Record<string, Item>> = {};
-  infraItem?.subitems?.forEach((subitem) => {
-    const FFN = subitem.values[ENV.INFRA.CIDS.FFN] as string;
-    const columnGroup = subitem.values[
-      ENV.INFRA.CIDS.PARAMETER_LEVEL
-    ] as string;
-
-    infraMapping[columnGroup] = infraMapping[columnGroup] || {};
-    infraMapping[columnGroup][FFN] = subitem;
-    infraFFNtoCID[columnGroup] = infraFFNtoCID[columnGroup] || {};
-    infraFFNtoCID[columnGroup][FFN] = String(
-      subitem.values[ENV.INFRA.CIDS.COLUMN_ID]
+    const infraItem = infraBoard.items!.find(
+      (item) =>
+        Number(item.values![ENV.INFRA.ROOT_CIDS.CAMPAIGN_BOARD_ID]) ===
+        campaignBID
     );
-  });
 
-  const actionFlags = getBoardActionFlags(infraItem);
+    if (!infraItem) {
+      throw new Error(`Infra item not found.`);
+    }
 
-  const campaignDetails = await processCampaignItem(
-    campaignItem,
-    infraFFNtoCID,
-    infraMapping
-  );
+    if (!infraItem.cells) {
+      throw new Error(`Infra items not initialized.`);
+    }
 
-  if (campaignDetails.status !== "success") {
-    await processFail([campaignDetails], campaignPID);
-    return;
+    await infraItem.update({
+      queryLevel: QueryLevel.Cell,
+      subitemLevel: QueryLevel.Cell,
+    });
+
+    const infraFFNtoCID: Record<string, Record<string, string>> = {};
+    const infraMapping: Record<string, Record<string, Item>> = {};
+    infraItem?.subitems?.forEach((subitem) => {
+      const FFN = subitem.values[ENV.INFRA.CIDS.FFN] as string;
+      const columnGroup = subitem.values[
+        ENV.INFRA.CIDS.PARAMETER_LEVEL
+      ] as string;
+
+      infraMapping[columnGroup] = infraMapping[columnGroup] || {};
+      infraMapping[columnGroup][FFN] = subitem;
+      infraFFNtoCID[columnGroup] = infraFFNtoCID[columnGroup] || {};
+      infraFFNtoCID[columnGroup][FFN] = String(
+        subitem.values[ENV.INFRA.CIDS.COLUMN_ID]
+      );
+    });
+
+    const actionFlags = getBoardActionFlags(infraItem);
+
+    const campaignDetails = await processCampaignItem(
+      campaignItem,
+      infraFFNtoCID,
+      infraMapping
+    );
+
+    if (campaignDetails.status !== "success") {
+      await processFail([campaignDetails], campaignPID);
+      return;
+    }
+
+    const roundDetails = processRoundItems(
+      campaignItem.subitems,
+      infraFFNtoCID
+    );
+
+    const themeBID = infraItem.values[ENV.INFRA.ROOT_CIDS.THEME_BOARD_ID];
+    const offerBID = infraItem.values[ENV.INFRA.ROOT_CIDS.OFFER_BOARD_ID];
+    const configBID = infraItem.values[ENV.INFRA.ROOT_CIDS.CONFIG_BOARD_ID];
+
+    const themeName = campaignDetails.data.theme;
+    const offerName = campaignDetails.data.offer;
+
+    const regulations = campaignDetails.data.regulations;
+    const tiers = campaignDetails.data.tiers; //Comma-separated
+    const ab = campaignDetails.data.ab;
+
+    const allRegulations = generateRegulations(regulations, tiers, ab);
+    const activeRegulations = allRegulations.filter(
+      (regulation) => regulation.isChecked
+    );
+
+    const [themeGroup, offerGroup, configGroup] = await Promise.all([
+      getThemeGroup(themeBID as string, themeName as string),
+      getOfferGroup(offerBID as string, offerName as string),
+      getConfigGroup(configBID as string, offerName as string),
+    ]);
+
+    const themeDetails = processThemeGroup(
+      themeGroup,
+      infraFFNtoCID,
+      activeRegulations
+    );
+
+    const offerDetails = processOfferGroup(
+      offerGroup,
+      infraFFNtoCID,
+      activeRegulations
+    );
+
+    const configDetails = await processConfigGroup(
+      configGroup,
+      infraFFNtoCID,
+      allRegulations
+    );
+
+    const allDetails = [
+      roundDetails,
+      themeDetails,
+      offerDetails,
+      configDetails,
+    ];
+    if (
+      roundDetails.status !== "success" ||
+      themeDetails.status !== "success" ||
+      offerDetails.status !== "success" ||
+      configDetails.status !== "success"
+    ) {
+      const failedDetails = allDetails.filter(
+        (details) => details.status !== "success"
+      );
+      await processFail(failedDetails, campaignPID);
+      return;
+    }
+
+    //Start inter-board validation
+    //Casting is necessary because typescript cant narrow the type from the filter logic above
+    //We can use predicates here but will bloat
+    const result = interValidation(
+      campaignDetails.data,
+      roundDetails.data,
+      themeDetails.data,
+      offerDetails.data,
+      configDetails.data
+    );
+
+    
+  } catch (err) {
+    await processError(err, "Import Campaign", campaignPID);
   }
-
-  const roundDetails = processRoundItems(campaignItem.subitems, infraFFNtoCID);
-
-  const themeBID = infraItem.values[ENV.INFRA.ROOT_CIDS.THEME_BOARD_ID];
-  const offerBID = infraItem.values[ENV.INFRA.ROOT_CIDS.OFFER_BOARD_ID];
-  const configBID = infraItem.values[ENV.INFRA.ROOT_CIDS.CONFIG_BOARD_ID];
-
-  const themeName = campaignDetails.data.theme;
-  const offerName = campaignDetails.data.offer;
-
-  const regulations = campaignDetails.data.regulations;
-  const tiers = campaignDetails.data.tiers; //Comma-separated
-  const ab = campaignDetails.data.ab;
-
-  const allRegulations = generateRegulations(regulations, tiers, ab);
-  const activeRegulations = allRegulations.filter(
-    (regulation) => regulation.isChecked
-  );
-
-  const [themeGroup, offerGroup, configGroup] = await Promise.all([
-    getThemeGroup(themeBID as string, themeName as string),
-    getOfferGroup(offerBID as string, offerName as string),
-    getConfigGroup(configBID as string, offerName as string),
-  ]);
-
-  const themeDetails = processThemeGroup(
-    themeGroup,
-    infraFFNtoCID,
-    activeRegulations
-  );
-
-  const offerDetails = processOfferGroup(
-    offerGroup,
-    infraFFNtoCID,
-    activeRegulations
-  );
-
-  const configDetails = await processConfigGroup(
-    configGroup,
-    infraFFNtoCID,
-    allRegulations
-  );
-
-
-  const allDetails = [roundDetails, themeDetails, offerDetails, configDetails];
-  const failedDetails = allDetails.filter((details) => details.status !== 'success');
-  
-  if(failedDetails.length > 0){
-    await processFail(failedDetails, campaignPID);
-    return;
-  }
-
-  //Start inter-board validation
 }
 
 try {

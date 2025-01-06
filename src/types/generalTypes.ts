@@ -20,13 +20,7 @@ export type ValidationResult<T = undefined, U = ErrorObject[]> =
         })
   | FailedValidationResult<U>;
 
-export type FailedValidationResult<U = ErrorObject[]> =
-  | {
-      status: "fail";
-      data: U;
-    }
-  | {
-      status: "error";
-      error: Error;
-      origin: string;
-    };
+export type FailedValidationResult<U = ErrorObject[]> = {
+  status: "fail";
+  data: U;
+};
