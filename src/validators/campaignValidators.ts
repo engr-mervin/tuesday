@@ -26,7 +26,9 @@ export function interValidation(
   themeItems: ThemeParameter[],
   offerItems: ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[],
   configItems: ValidatedConfigItem[]
-)<ValidationResult> {}
+): ValidationResult {
+  return { status: "success" };
+}
 
 export function validateCampaignItem(
   campaignFields: CampaignFields

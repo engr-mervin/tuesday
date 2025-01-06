@@ -27,7 +27,6 @@ import {
   ValidatedBonusOfferItem,
   ValidatedNonBonusOfferItem,
 } from "./types/offerTypes.js";
-import { validateParameter } from "./validators/parameterValidators.js";
 import {
   interValidation,
   validateCampaignItem,
@@ -867,9 +866,11 @@ function getOfferItems(
 
         //This happens if a market chosen in campaign and is in configuration,
         //but not declared on the boards or the cell id has mismatch
+        //just continue;
         if (!cell) {
-          throw new ConfigError("missing-column", regulationName);
+          continue;
         }
+
         valuesObj[regulationName] = cell.value as string;
       }
 
@@ -905,7 +906,7 @@ function getOfferItems(
           (cell) => cell.title === regulationName
         );
         if (!cell) {
-          throw new ConfigError("missing-column", regulationName);
+          continue;
         }
         valuesObj[regulationName] = cell.value as string;
       }
@@ -941,7 +942,20 @@ function processThemeGroup(
       activeRegulations
     );
 
-    return validateThemeItems(themeItems);
+    const validationResult = validateThemeItems(themeItems);
+    if (validationResult.status === "fail") {
+      return {
+        status: "fail",
+        data: [
+          {
+            name: "Theme",
+            errors: validationResult.data,
+          },
+        ],
+      };
+    }
+
+    return validationResult;
   } catch (err) {
     throw new InfraError("Theme", err as Error);
   }
@@ -1013,7 +1027,7 @@ async function processConfigGroup(
         status: "fail",
         data: [
           {
-            name: "Config",
+            name: "Configuration",
             errors: validationResult.data,
           },
         ],
@@ -1092,13 +1106,13 @@ function generateRegulations(
     Object.keys(regulations).forEach((regulation) => {
       tiersList.forEach((tier) => {
         allRegulations.push({
-          name: `${regulation} ${tier}`,
+          name: `${regulation.trim()} ${tier.trim()}`,
           isChecked: regulations[regulation],
         });
         if (ab) {
           //NOTE: If 0 then disable ab
           allRegulations.push({
-            name: `${regulation} ${tier}_B`,
+            name: `${regulation.trim()} ${tier.trim()}_B`,
             isChecked: regulations[regulation],
           });
         }
@@ -1148,6 +1162,7 @@ async function processError(
   }
 
   const errorString = generateErrorReportString(infraError);
+
   if (itemId) {
     await mondayClient.writeUpdate(itemId, errorString);
   }
@@ -1159,6 +1174,13 @@ async function processError(
       message: infraError.baseError.message,
     })}`
   );
+
+  if (infraError.baseError instanceof ConfigError) {
+    console.error(`
+      CONFIG ERROR: ${
+        infraError.baseError.name
+      }: ${infraError.baseError.configNames.toString()}`);
+  }
 }
 
 async function processFail(
@@ -1305,9 +1327,6 @@ async function importCampaign(webhook: MondayWebHook) {
       return;
     }
 
-    //Start inter-board validation
-    //Casting is necessary because typescript cant narrow the type from the filter logic above
-    //We can use predicates here but will bloat
     const result = interValidation(
       campaignDetails.data,
       roundDetails.data,
@@ -1315,8 +1334,6 @@ async function importCampaign(webhook: MondayWebHook) {
       offerDetails.data,
       configDetails.data
     );
-
-    
   } catch (err) {
     await processError(err, "Import Campaign", campaignPID);
   }
