@@ -519,6 +519,7 @@ async function getConfigGroup(configBID: string, groupName: string) {
     subitemLevel: QueryLevel.Cell,
   });
 
+
   return configGroup;
 }
 
@@ -714,7 +715,7 @@ async function getConfigItems(
     //These fields can still be undefined if the column is not declared..
     const itemRound = item.values[commRoundCID] as string;
     const itemType = item.values[commTypeCID] as string;
-    const itemField = item.values[commFieldCID] as string;
+    const itemField = item.values[commFieldCID] as string[];
 
     if (itemRound === undefined) {
       missingConfigs.push(FRIENDLY_FIELD_NAMES.Configuration_Round);
@@ -736,7 +737,7 @@ async function getConfigItems(
         name: item.name,
         round: itemRound,
         type: itemType,
-        fieldName: itemField,
+        fieldName: itemField[0],
         segments,
       };
       configItems.push(configItem);
@@ -807,7 +808,7 @@ async function getConfigItems(
       name: item.name,
       round: itemRound,
       type: itemType,
-      fieldName: itemField,
+      fieldName: itemField[0],
       fields,
       segments,
     };
@@ -1314,6 +1315,7 @@ async function importCampaign(webhook: MondayWebHook) {
       offerDetails,
       configDetails,
     ];
+    
     if (
       roundDetails.status !== "success" ||
       themeDetails.status !== "success" ||

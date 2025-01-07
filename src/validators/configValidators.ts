@@ -68,7 +68,7 @@ export function validateConfigItems(
     if (configErrors.length) {
       errors.push({
         name: configItem.name,
-        errors,
+        errors: configErrors,
       });
     }
   }
@@ -575,7 +575,7 @@ export const configValidationRules: Record<
 
     if (fieldName.toLowerCase().includes("id")) {
       for (const value of values) {
-        if (!BANNER_REGEX.test(value)) {
+        if (value.length && !BANNER_REGEX.test(value)) {//Empty string is valid.
           errors.push(`The Banner ID should be in 8-4-4-4-12 format only.`);
         }
       }

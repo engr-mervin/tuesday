@@ -19,11 +19,6 @@ export function validateParameter(parameter: {
 
   for (const seg in parameter.values) {
     const value = parameter.values[seg];
-
-    if (value === "") {
-      errors.push(`
-        Parameter value for segment ${seg} can not be empty.`);
-    }
     if (value !== null && PARAM_REGEX.test(value)) {
       errors.push(
         `Parameter value for segment ${seg} must not contain special characters (|, Enter, New-Line).`
