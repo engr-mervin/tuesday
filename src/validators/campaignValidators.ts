@@ -6,7 +6,9 @@ import { CAMPAIGN_NAME_REGEX } from "../constants/regexConstants.js";
 import { addDays, getToday } from "../helpers/dateFunctions.js";
 import { isInteger } from "../helpers/validatorFunctions.js";
 import {
+  ActionFlags,
   CampaignFields,
+  Regulation,
   ValidatedCampaignFields,
 } from "../types/campaignTypes";
 import { ConfigItem, ValidatedConfigItem } from "../types/configTypes.js";
@@ -25,7 +27,9 @@ export function interValidation(
   roundFields: ValidatedRoundFields[],
   themeItems: ThemeParameter[],
   offerItems: ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[],
-  configItems: ValidatedConfigItem[]
+  configItems: ValidatedConfigItem[],
+  activeRegulations: Regulation[],
+  actionFlags: ActionFlags
 ): ValidationResult {
   return { status: "success" };
 }

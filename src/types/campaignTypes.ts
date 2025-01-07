@@ -1,6 +1,9 @@
 import { User } from "monstaa/dist/classes/User.js";
 import { CAMPAIGN_STATUSES } from "../constants/infraConstants.js";
-import { DropdownCellValue, NumberCellValue } from "monstaa/dist/classes/Cell.js";
+import {
+  DropdownCellValue,
+  NumberCellValue,
+} from "monstaa/dist/classes/Cell.js";
 import { Optional } from "./generalTypes.js";
 
 //Get fields will validate existence,
@@ -27,6 +30,20 @@ export interface CampaignFields {
   >;
 }
 
+export interface Regulation {
+  name: string;
+  isChecked: boolean;
+}
+
+export interface ActionFlags {
+  Import_Parameters: boolean;
+  Connect_Reminders: boolean;
+  Cancel_Rounds: boolean;
+  Delete_Segments: boolean;
+  Didnt_Deposit_With_Promocode: boolean;
+  Is_One_Time: boolean;
+  Exclude_Default_Parameters: boolean;
+}
 
 export interface ValidatedCampaignFields {
   name: string;

@@ -575,7 +575,8 @@ export const configValidationRules: Record<
 
     if (fieldName.toLowerCase().includes("id")) {
       for (const value of values) {
-        if (value.length && !BANNER_REGEX.test(value)) {//Empty string is valid.
+        if (value.length && !BANNER_REGEX.test(value)) {
+          //Empty string is valid.
           errors.push(`The Banner ID should be in 8-4-4-4-12 format only.`);
         }
       }
@@ -845,14 +846,14 @@ export const configValidationRules: Record<
       return [];
     }
 
-    const missingFields = REQUIRED_PROMO_META_CLASSIFICATIONS.filter(
+    const missingRequiredFields = REQUIRED_PROMO_META_CLASSIFICATIONS.filter(
       (classification) =>
         !fields.find((field) => field.classification === classification)
     );
 
-    if (missingFields.length) {
+    if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+        `Missing required fields: ${arrayToCommaSeparatedList(missingRequiredFields)}`
       );
     }
 
@@ -866,8 +867,20 @@ export const configValidationRules: Record<
     if (unsupportedFields.length) {
       errors.push(
         `Invalid field classifications: ${arrayToCommaSeparatedList(
-          unsupportedFields.map((x) => x.classification)
+          unsupportedFields.map((field) => field.classification)
         )}`
+      );
+    }
+
+    const missingFieldIds = fields.filter(
+      (field) => !field.classification && !field.fieldId
+    );
+
+    if (missingFieldIds.length) {
+      errors.push(
+        `Missing both classification and field id: ${arrayToCommaSeparatedList(
+          missingFieldIds.map((field) => field.name)
+        )} `
       );
     }
 
@@ -881,19 +894,23 @@ export const configValidationRules: Record<
       return [];
     }
 
-    const missingFields = REQUIRED_PROMO_CONFIG_CLASSIFICATIONS.filter(
+    const missingRequiredFields = REQUIRED_PROMO_CONFIG_CLASSIFICATIONS.filter(
       (classification) =>
         !fields.find((field) => field.classification === classification)
     );
 
-    if (missingFields.length) {
+    if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+        `Missing required field classifications: ${arrayToCommaSeparatedList(
+          missingRequiredFields
+        )}`
       );
     }
 
+    //NOTE: Empty means take the field Id value
     const unsupportedFields = fields.filter(
       (field) =>
+        field.classification &&
         !Object.values(PROMO_CONFIG_CLASSIFICATIONS).includes(
           field.classification
         )
@@ -901,9 +918,21 @@ export const configValidationRules: Record<
 
     if (unsupportedFields.length) {
       errors.push(
-        `Invalid field classifications: ${arrayToCommaSeparatedList(
-          unsupportedFields.map((x) => x.classification)
+        `Invalid classifications: ${arrayToCommaSeparatedList(
+          unsupportedFields.map((field) => field.classification)
         )}`
+      );
+    }
+
+    const missingFieldIds = fields.filter(
+      (field) => !field.classification && !field.fieldId
+    );
+
+    if (missingFieldIds.length) {
+      errors.push(
+        `Missing both classification and field id: ${arrayToCommaSeparatedList(
+          missingFieldIds.map((field) => field.name)
+        )} `
       );
     }
 
@@ -917,14 +946,16 @@ export const configValidationRules: Record<
       return [];
     }
 
-    const missingFields = REQUIRED_PROMO_IMAGE_CLASSIFICATIONS.filter(
+    const missingRequiredFields = REQUIRED_PROMO_IMAGE_CLASSIFICATIONS.filter(
       (classification) =>
         !fields.find((field) => field.classification === classification)
     );
 
-    if (missingFields.length) {
+    if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+        `Missing required field classifications: ${arrayToCommaSeparatedList(
+          missingRequiredFields
+        )}`
       );
     }
 
@@ -938,8 +969,20 @@ export const configValidationRules: Record<
     if (unsupportedFields.length) {
       errors.push(
         `Invalid field classifications: ${arrayToCommaSeparatedList(
-          unsupportedFields.map((x) => x.classification)
+          unsupportedFields.map((field) => field.classification)
         )}`
+      );
+    }
+
+    const missingFieldIds = fields.filter(
+      (field) => !field.classification && !field.fieldId
+    );
+
+    if (missingFieldIds.length) {
+      errors.push(
+        `Missing both classification and field id: ${arrayToCommaSeparatedList(
+          missingFieldIds.map((field) => field.name)
+        )} `
       );
     }
 
@@ -979,14 +1022,14 @@ export const configValidationRules: Record<
       return [];
     }
 
-    const missingFields = REQUIRED_PROMO_TEXT_CLASSIFICATIONS.filter(
+    const missingRequiredFields = REQUIRED_PROMO_TEXT_CLASSIFICATIONS.filter(
       (classification) =>
         !fields.find((field) => field.classification === classification)
     );
 
-    if (missingFields.length) {
+    if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+        `Missing required fields: ${arrayToCommaSeparatedList(missingRequiredFields)}`
       );
     }
 
@@ -1000,8 +1043,20 @@ export const configValidationRules: Record<
     if (unsupportedFields.length) {
       errors.push(
         `Invalid field classifications: ${arrayToCommaSeparatedList(
-          unsupportedFields.map((x) => x.classification)
+          unsupportedFields.map((field) => field.classification)
         )}`
+      );
+    }
+
+    const missingFieldIds = fields.filter(
+      (field) => !field.classification && !field.fieldId
+    );
+
+    if (missingFieldIds.length) {
+      errors.push(
+        `Missing both classification and field id: ${arrayToCommaSeparatedList(
+          missingFieldIds.map((field) => field.name)
+        )} `
       );
     }
 
@@ -1029,14 +1084,14 @@ export const configValidationRules: Record<
       return [];
     }
 
-    const missingFields = REQUIRED_PROMO_CTA_CLASSIFICATIONS.filter(
+    const missingRequiredFields = REQUIRED_PROMO_CTA_CLASSIFICATIONS.filter(
       (classification) =>
         !fields.find((field) => field.classification === classification)
     );
 
-    if (missingFields.length) {
+    if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingFields)}`
+        `Missing required fields: ${arrayToCommaSeparatedList(missingRequiredFields)}`
       );
     }
 
@@ -1052,6 +1107,18 @@ export const configValidationRules: Record<
         `Invalid field classifications: ${arrayToCommaSeparatedList(
           unsupportedFields.map((x) => x.classification)
         )}`
+      );
+    }
+
+    const missingFieldIds = fields.filter(
+      (field) => !field.classification && !field.fieldId
+    );
+
+    if (missingFieldIds.length) {
+      errors.push(
+        `Missing both classification and field id: ${arrayToCommaSeparatedList(
+          missingFieldIds.map((field) => field.name)
+        )} `
       );
     }
 

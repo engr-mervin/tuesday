@@ -32,7 +32,9 @@ import {
   validateCampaignItem,
 } from "./validators/campaignValidators.js";
 import {
+  ActionFlags,
   CampaignFields,
+  Regulation,
   ValidatedCampaignFields,
 } from "./types/campaignTypes.js";
 import {
@@ -471,22 +473,21 @@ async function getCampaignFields(
   };
 }
 
-function getBoardActionFlags(infraItem: Item) {
-  //Maybe convert '_' to space and dynamically construct the return object
+function getBoardActionFlags(infraItem: Item): ActionFlags {
   return {
-    "Import Parameters":
+    Import_Parameters:
       infraItem.values[FRIENDLY_FIELD_NAMES.Import_Parameters] === true,
-    "Connect Reminders":
+    Connect_Reminders:
       infraItem.values[FRIENDLY_FIELD_NAMES.Connect_Reminders] === true,
-    "Cancel Rounds":
+    Cancel_Rounds:
       infraItem.values[FRIENDLY_FIELD_NAMES.Cancel_Rounds] === true,
-    "Delete Segments":
+    Delete_Segments:
       infraItem.values[FRIENDLY_FIELD_NAMES.Delete_Segments] === true,
-    "Didnt Deposit with Promocode":
+    Didnt_Deposit_With_Promocode:
       infraItem.values[FRIENDLY_FIELD_NAMES.Didnt_Deposit_with_Promocode] ===
       true,
-    "Is One Time": infraItem.values[FRIENDLY_FIELD_NAMES.Is_One_Time] === true,
-    "Exclude Default Parameters":
+    Is_One_Time: infraItem.values[FRIENDLY_FIELD_NAMES.Is_One_Time] === true,
+    Exclude_Default_Parameters:
       infraItem.values[FRIENDLY_FIELD_NAMES.Exclude_Default_Parameters] ===
       true,
   };
@@ -518,7 +519,6 @@ async function getConfigGroup(configBID: string, groupName: string) {
     queryLevel: QueryLevel.Cell,
     subitemLevel: QueryLevel.Cell,
   });
-
 
   return configGroup;
 }
@@ -1068,10 +1068,6 @@ async function processConfigGroup(
 //This way, any user changes after the import flow will not be reflected in the handler
 //also improving run time, we make sure that the handler is handling a valid campaign
 //AND we are moving the validation layer of Monday entirely in Tuesday API
-interface Regulation {
-  name: string;
-  isChecked: boolean;
-}
 
 function generateErrorReportString(infraError: InfraError) {
   return `<ol><li><h4>${infraError.origin}</h4><ol><li><p>Encountered internal error while handling the request: ${infraError.id}</ol></li></p></li></ol>`;
@@ -1315,7 +1311,7 @@ async function importCampaign(webhook: MondayWebHook) {
       offerDetails,
       configDetails,
     ];
-    
+
     if (
       roundDetails.status !== "success" ||
       themeDetails.status !== "success" ||
@@ -1334,7 +1330,9 @@ async function importCampaign(webhook: MondayWebHook) {
       roundDetails.data,
       themeDetails.data,
       offerDetails.data,
-      configDetails.data
+      configDetails.data,
+      activeRegulations,
+      actionFlags
     );
   } catch (err) {
     await processError(err, "Import Campaign", campaignPID);
