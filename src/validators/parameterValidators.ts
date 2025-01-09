@@ -4,7 +4,7 @@ import { isIntegerInRange } from "../helpers/validatorFunctions.js";
 
 export function validateParameter(parameter: {
   parameterName: string;
-  values: { [key: string]: string | null };
+  values: { [key: string]: string | undefined };
   parameterType?: string;
 }): string[] {
   const errors = [];
@@ -19,7 +19,7 @@ export function validateParameter(parameter: {
 
   for (const seg in parameter.values) {
     const value = parameter.values[seg];
-    if (value !== null && PARAM_REGEX.test(value)) {
+    if (value !== undefined && PARAM_REGEX.test(value)) {
       errors.push(
         `Parameter value for segment ${seg} must not contain special characters (|, Enter, New-Line).`
       );

@@ -32,6 +32,10 @@ export function validateCampaignRounds(
     typeSet.add(roundFields.name);
   }
 
+  if (!typeSet.has(ROUND_TYPES.Intro)) {
+    errors.push(`Round should have an Intro Round.`);
+  }
+
   return errors.length
     ? {
         status: "fail",

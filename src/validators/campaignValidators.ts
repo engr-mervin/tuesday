@@ -1,26 +1,91 @@
 import {
   CAMPAIGN_STATUSES,
+  CLOSED_POPULATION_EXTENSIONS,
+  CLOSED_POPULATION_OPTIONS,
+  CONFIGURATION_TYPES,
   EMPTY_SELECTS_ENUM,
+  LIMITS,
+  POPULATION_FILTER_TYPES,
+  POPULATION_FILTERS,
 } from "../constants/infraConstants.js";
 import { CAMPAIGN_NAME_REGEX } from "../constants/regexConstants.js";
-import { addDays, getToday } from "../helpers/dateFunctions.js";
-import { isInteger } from "../helpers/validatorFunctions.js";
+import { addDays, getToday, stringToDate } from "../helpers/dateFunctions.js";
+import {
+  isCommaSeparatedList,
+  isCommaSeparatedListOfIntegers,
+  isInteger,
+  isIntegerInRange,
+  isValidStringRange,
+} from "../helpers/validatorFunctions.js";
 import {
   ActionFlags,
+  BaseParameter,
   CampaignFields,
+  PopulationFilters,
   Regulation,
   ValidatedCampaignFields,
 } from "../types/campaignTypes";
-import { ConfigItem, ValidatedConfigItem } from "../types/configTypes.js";
-import { ValidationResult } from "../types/generalTypes.js";
+import { ValidatedConfigItem } from "../types/configTypes.js";
+import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
 import {
-  BonusOfferItem,
-  NonBonusOfferItem,
   ValidatedBonusOfferItem,
   ValidatedNonBonusOfferItem,
 } from "../types/offerTypes.js";
 import { ValidatedRoundFields } from "../types/roundTypes.js";
 import { ThemeParameter } from "../types/themeTypes.js";
+
+function validatePromocodeParameters(
+  parameters: BaseParameter[],
+  promocodeConfigs: ValidatedConfigItem[],
+  activeRegulations: Regulation[]
+): ValidationResult<undefined, string[]> {
+  const errors: string[] = [];
+  //If promocode is defined, the parameters with 'PromoCode' type should have a value
+  const promocodeParameters = parameters.filter(
+    (parameter) => parameter.parameterType === "PromoCode"
+  );
+
+  if (promocodeParameters.length === 0) {
+    errors.push(
+      `Promocode Config is defined but promocode is missing in the offer board.`
+    );
+  }
+
+  //NOTE: Because of validation in campaign items that it must have at least one active regulation,
+  //The firstRegulation is guaranteed to exist
+  const firstRegulation = activeRegulations[0];
+
+  const parametersDefinedForFirstReg = promocodeParameters.every(
+    (parameter) => parameter.values[firstRegulation.name]
+  );
+
+  if (!parametersDefinedForFirstReg) {
+    errors.push(
+      `Promocode parameters must be configured in the offer board for the first active regulation - ${firstRegulation}`
+    );
+  }
+
+  const promocodeParameterNames = promocodeParameters.map(
+    (parameter) => parameter.parameterName
+  );
+  //Check if all promocode Config exists in the promocode params
+  for (const promocodeConfig of promocodeConfigs) {
+    if (!promocodeParameterNames.includes(promocodeConfig.name)) {
+      errors.push(
+        `Promocode Config ${promocodeConfig.name} does not exist in the Offers board.`
+      );
+    }
+  }
+
+  return errors.length
+    ? {
+        status: "fail",
+        data: errors,
+      }
+    : {
+        status: "success",
+      };
+}
 
 export function interValidation(
   campaignFields: ValidatedCampaignFields,
@@ -31,7 +96,226 @@ export function interValidation(
   activeRegulations: Regulation[],
   actionFlags: ActionFlags
 ): ValidationResult {
+  const promocodeConfigs = configItems.filter(
+    (config) => config.fieldName === CONFIGURATION_TYPES.Promocode_Config
+  );
+  const errorObjects: ErrorObject[] = [];
+
+  const allParams: BaseParameter[] = [...themeItems, ...offerItems];
+  let promoCodeResult: ValidationResult<undefined, string[]>;
+  if (promocodeConfigs.length) {
+    promoCodeResult = validatePromocodeParameters(
+      allParams,
+      promocodeConfigs,
+      activeRegulations
+    );
+
+    if (promoCodeResult.status === "fail") {
+      errorObjects.push({
+        name: "Promocode Config",
+        errors: promoCodeResult.data,
+      });
+    }
+  }
+
+  if (actionFlags.Import_Parameters) {
+    const paramErrors: string[] = [];
+    if (allParams.length === 0) {
+      paramErrors.push(
+        `Import parameters is checked but campaign is missing parameters`
+      );
+    }
+
+    if (allParams.length > LIMITS.Max_Params + 1) {
+      //We're adding 1 for the AAAA record
+      paramErrors.push(
+        `Parameters exceed the maximum allowed number of parameters.`
+      );
+    }
+
+    if (paramErrors.length) {
+      errorObjects.push({
+        name: "Import Parameters",
+        errors: paramErrors,
+      });
+    }
+  }
+
+  if (actionFlags.Didnt_Deposit_With_Promocode) {
+    const promocodeErrors: string[] = [];
+
+    //TODO: Add validations for duplicated promcodes? and param types
+    const promoParam = allParams.find(
+      (param) => param.parameterType === "PromoCode"
+    );
+
+    const promoUseCountParam = allParams.find(
+      (param) => param.parameterType === "PromoCodeUseCount"
+    );
+
+    if (!promoParam) {
+      promocodeErrors.push(`
+        Didn't Deposit with Promocode is checked but missing PromoCode parameter`);
+    } else {
+      for (const segment in promoParam.values) {
+        if (!promoParam.values[segment]) {
+          promocodeErrors.push(`${segment} is missing PromoCode value.`);
+        }
+      }
+    }
+
+    if (!promoUseCountParam) {
+      promocodeErrors.push(`
+        Didn't Deposit with Promocode is checked but missing PromoCodeUseCount parameter`);
+    } else {
+      for (const segment in promoUseCountParam.values) {
+        const value = promoUseCountParam.values[segment];
+        if (!value) {
+          promocodeErrors.push(
+            `${segment} is missing PromoCodeUseCount value.`
+          );
+        } else if (Number.isInteger(value)) {
+          promocodeErrors.push(
+            `${segment} PromoCodeUseCount's value is invalid.`
+          );
+        }
+      }
+    }
+
+    if (promocodeErrors.length) {
+      errorObjects.push({
+        name: "Didn't Deposit with Promocode",
+        errors: promocodeErrors,
+      });
+    }
+  }
+
+  //Validate round dates
+
+  //Validate start dates
+  const campaignErrors: string[] = [];
+  const campStartDate = stringToDate(campaignFields.startDate);
+  const campEndDate = stringToDate(campaignFields.endDate);
+
+  if (!campStartDate) {
+    campaignErrors.push(
+      `Failed converting campaign start date: ${campaignFields.startDate}`
+    );
+  }
+
+  if (!campEndDate) {
+    campaignErrors.push(
+      `Failed converting campaign end date: ${campaignFields.endDate}`
+    );
+  }
+
+  //TODO: Improve this
+  if (campaignErrors.length) {
+    errorObjects.push({
+      name: "Campaign Dates",
+      errors: campaignErrors,
+    });
+  } else {
+    for (const round of roundFields) {
+      const roundErrors: string[] = [];
+
+      const isOneTime = campaignFields.isOneTime || round.isOneTime;
+      if (!isOneTime && !round.endDate) {
+        roundErrors.push(`Missing round end date.`);
+      } else {
+        const startDate = stringToDate(round.startDate);
+        const endDate = isOneTime ? startDate : stringToDate(round.endDate!);
+
+        if (!startDate) {
+          roundErrors.push(`
+          Failed converting round start date: ${round.startDate}`);
+        }
+
+        if (!endDate) {
+          roundErrors.push(
+            `Failed converting round end date: ${round.endDate}`
+          );
+        }
+
+        if (
+          startDate &&
+          (startDate < campStartDate! || startDate > campEndDate!)
+        ) {
+          roundErrors.push(
+            `Round start date must be between campaign dates range: ${round.startDate}`
+          );
+        }
+        if (endDate && (endDate < campStartDate! || endDate > campEndDate!)) {
+          roundErrors.push(
+            `Round end date must be between campaign dates range: ${round.endDate}`
+          );
+        }
+      }
+    }
+  }
+
   return { status: "success" };
+}
+
+export function validatePopulationFilters(
+  popFilters: PopulationFilters
+): ValidationResult<undefined, string[]> {
+  const errors: string[] = [];
+
+  //Validate vendors existing if we have games
+  const casinoGames = popFilters[POPULATION_FILTERS.Cashback_Casino_Games];
+  const casinoVendors = popFilters[POPULATION_FILTERS.Cashback_Casino_Vendors];
+
+  if (casinoGames && !casinoVendors) {
+    errors.push(`CashbackCasinoVendors is required to use CashbackCasinoGames`);
+  }
+
+  for (const popFilterKey in popFilters) {
+    const popFilter = popFilters[popFilterKey];
+    if (!Object.keys(POPULATION_FILTERS).includes(popFilterKey)) {
+      errors.push(`
+        ${popFilterKey} is not a supported Population Filter.
+        `);
+      continue;
+    }
+
+    if (POPULATION_FILTER_TYPES.Round_Based.includes(popFilterKey)) {
+      const isValidRange = isValidStringRange(popFilter.value);
+      if (!isValidRange) {
+        `${popFilterKey} is not a valid range.`;
+      }
+    }
+
+    if(POPULATION_FILTER_TYPES.Last_Bet_Date.includes(popFilterKey)){
+      
+    }
+
+    if (POPULATION_FILTERS.Cashback_Casino_Vendors === popFilterKey) {
+      const isValidList = isCommaSeparatedList(popFilter.value, (v) =>
+        isIntegerInRange(v, 0)
+      );
+      if (!isValidList) {
+        `${popFilterKey} is not a valid comma separated list of integers > 0`;
+      }
+    }
+    if (POPULATION_FILTERS.Cashback_Casino_Games === popFilterKey) {
+      const isValidList = isCommaSeparatedList(popFilter.value, (v) =>
+        isIntegerInRange(v, 0)
+      );
+      if (!isValidList) {
+        `${popFilterKey} is not a valid comma separated list of integers > 0`;
+      }
+    }
+  }
+
+  return errors.length
+    ? {
+        status: "fail",
+        data: errors,
+      }
+    : {
+        status: "success",
+      };
 }
 
 export function validateCampaignItem(
@@ -59,6 +343,30 @@ export function validateCampaignItem(
     errors.push(
       `Campaign name must not contain special characters. Name: ${campaignFields.name}`
     );
+  }
+
+  if (
+    campaignFields.closedPopulation.type === CLOSED_POPULATION_OPTIONS.CSV &&
+    campaignFields.closedPopulation.files !== undefined
+  ) {
+    //Validate assets to only have one value
+    const files = campaignFields.closedPopulation.files;
+
+    if (files.length === 0) {
+      errors.push(`No files defined for closed population.`);
+    } else if (files.length !== 1) {
+      errors.push(`
+        Closed population should only have one file.`);
+    } else {
+      const file = files[0];
+      const splitString = file.name.split(".");
+      const extension = splitString[splitString.length - 1];
+
+      if (extension !== CLOSED_POPULATION_EXTENSIONS.CSV) {
+        errors.push(`
+          Closed population file format not accepted. Currently only CSV is accepted.`);
+      }
+    }
   }
 
   if (

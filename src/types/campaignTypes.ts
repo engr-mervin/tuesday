@@ -6,6 +6,12 @@ import {
 } from "monstaa/dist/classes/Cell.js";
 import { Optional } from "./generalTypes.js";
 
+export interface PopulationFilters {
+  [key: string]: {
+    value: string;
+    type: string;
+  };
+}
 //Get fields will validate existence,
 //Validation will validate validity of values
 export interface CampaignFields {
@@ -21,14 +27,25 @@ export interface CampaignFields {
   theme: string;
   offer: string;
   isOneTime: Optional<boolean>;
-  populationFilters: Record<
-    string,
-    {
-      value: string;
-      type: string;
-    }
-  >;
+  populationFilters: PopulationFilters;
+  closedPopulation: {
+    type: string | undefined;
+    files:
+      | {
+          assetId: number;
+          name: string;
+        }[]
+      | undefined;
+  };
 }
+
+export type BaseParameter = {
+  parameterName: string;
+  parameterType: string;
+  values: {
+    [key: string]: string | undefined;
+  };
+};
 
 export interface Regulation {
   name: string;

@@ -5,6 +5,15 @@ export const CAMPAIGN_COLUMNS = {
   },
 };
 
+export const CLOSED_POPULATION_OPTIONS = {
+  Pragmatic: "Pragmatic",
+  CSV: "Load from CSV",
+};
+
+export const CLOSED_POPULATION_EXTENSIONS = {
+  CSV: "csv",
+};
+
 export const FRIENDLY_FIELD_NAMES = {
   Offer: "Offer",
   Theme: "Theme",
@@ -14,6 +23,9 @@ export const FRIENDLY_FIELD_NAMES = {
   Tiers: "Tiers",
   AB: "A/B",
   Control_Group: "Control Group",
+  //TODO: Fix small p in board infra
+  Closed_Population: "Closed population",
+  Files: "Files",
   Round_Type: "Round Type",
   Round_Start_Date: "Round Start Date",
   Round_End_Date: "Round End Date",
@@ -56,6 +68,28 @@ export const ROUND_TYPES = {
 export const EMPTY_SELECTS_ENUM = {
   Offer: "Choose Offer",
   Theme: "Choose Theme",
+};
+
+export const POPULATION_FILTER_TYPES = {
+  Round_Based: [
+    "Filter_RoundBasedCasino",
+    "Filter_RoundBasedSport",
+    "Filter_RoundBasedPoker",
+  ],
+  //TODO: Verify this
+  Last_Bet_Date: ["Filter_LastBetDate"],
+};
+
+export const POPULATION_FILTERS = {
+  Sport_Type_Name: "Filter_SportTypeName",
+  UP48_Game_Survey: "Filter_UP48GameSurvey",
+  UP48_Season_Start: "Filter_UP48SeasonStart",
+  Event_Level_l2: "Filter_EventLevel2",
+  Round_Based_Casino: "Filter_RoundBasedCasino",
+  Round_Based_Sport: "Filter_RoundBasedSport",
+  Round_Based_Poker: "Filter_RoundBasedPoker",
+  Cashback_Casino_Vendors: "Filter_CashbackCasinoVendors",
+  Cashback_Casino_Games: "Filter_CashbackCasinoGames",
 };
 
 export const LIMITS = {
@@ -178,11 +212,14 @@ export const PROMO_PAGE_CLASSIFICATIONS = {
   Type: "Type",
 };
 
-export const REQUIRED_PROMO_META_CLASSIFICATIONS = []
-export const REQUIRED_PROMO_CONFIG_CLASSIFICATIONS = ["Name", "Template Name"]
-export const REQUIRED_PROMO_IMAGE_CLASSIFICATIONS = ["Mobile Image", "Desktop Image"]
-export const REQUIRED_PROMO_TEXT_CLASSIFICATIONS = ["Text"]
-export const REQUIRED_PROMO_CTA_CLASSIFICATIONS = ["Label"]
+export const REQUIRED_PROMO_META_CLASSIFICATIONS = [];
+export const REQUIRED_PROMO_CONFIG_CLASSIFICATIONS = ["Name", "Template Name"];
+export const REQUIRED_PROMO_IMAGE_CLASSIFICATIONS = [
+  "Mobile Image",
+  "Desktop Image",
+];
+export const REQUIRED_PROMO_TEXT_CLASSIFICATIONS = ["Text"];
+export const REQUIRED_PROMO_CTA_CLASSIFICATIONS = ["Label"];
 
 export const CONFIGURATION_TYPES = {
   Promocode_Config: "Promocode Config",

@@ -231,10 +231,11 @@ export const configValidationRules: Record<
       }
     }
 
+    
     //Validate value
+    const paramSet = new Set();
+    const nonParamSet = new Set();
     for (const field of configItem.fields) {
-      const paramSet = new Set();
-      const nonParamSet = new Set();
       const { fieldId, value, name } = field;
 
       if (
@@ -994,13 +995,13 @@ export const configValidationRules: Record<
           PROMO_PAGE_CLASSIFICATIONS.Mobile_Image,
         ].includes(field.classification)
       ) {
-        if (!field.files) {
+        if (!field.files || field.files.length === 0) {
           errors.push(`${field.classification} is missing file values.`);
         }
       } else if (
         [PROMO_PAGE_CLASSIFICATIONS.Text].includes(field.classification)
       ) {
-        if (!field.files && !field.value) {
+        if ((!field.files || field.files.length === 0) && !field.value) {
           errors.push(
             `${field.classification} is missing both file and text values.`
           );

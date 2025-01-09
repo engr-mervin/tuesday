@@ -15,24 +15,31 @@ import { validateParameter } from "./parameterValidators.js";
 //NOTE: Return null if valid or error message...
 export const offerValidationRules: Record<
   string,
-  (v: string, market: string, offerItem: BonusOfferItem) => null | string
+  (
+    value: string | undefined,
+    market: string,
+    offerItem: BonusOfferItem
+  ) => null | string
 > = {
   [OFFER_TYPES.External_Plan_ID]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
-    if (value.length === 0 || !isInteger(value)) {
+    if (value && (value.length === 0 || !isInteger(value))) {
       return `Value must be a valid integer.`;
     }
     return null;
   },
 
   [OFFER_TYPES.Winning_Offering_Type]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
+    if (value === undefined) {
+      return null;
+    }
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
     }
@@ -48,10 +55,13 @@ export const offerValidationRules: Record<
   },
 
   [OFFER_TYPES.Bonus_Offer_Type]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
+    if (value === undefined) {
+      return null;
+    }
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
     }
@@ -66,10 +76,14 @@ export const offerValidationRules: Record<
   },
 
   [OFFER_TYPES.Offer_Game_Group]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
+    if (value === undefined) {
+      return null;
+    }
+
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
     }
@@ -87,10 +101,14 @@ export const offerValidationRules: Record<
   },
 
   [OFFER_TYPES.Offer_Package_ID]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
+    if (value === undefined) {
+      return null;
+    }
+
     if (!isIntegerInRange(value, -1, 5)) {
       return `Value must be a positive integer up to 5 or -1`;
     }
@@ -98,10 +116,13 @@ export const offerValidationRules: Record<
   },
 
   [OFFER_TYPES.Expiration_Date]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
+    if (value === undefined) {
+      return null;
+    }
     //Hierarchy of delimiters - [.] [/] [-]
     const delimiter = value.includes(".")
       ? "."
@@ -131,10 +152,13 @@ export const offerValidationRules: Record<
   },
 
   [OFFER_TYPES.Number_of_Tickets]: (
-    value: string,
+    value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
   ) => {
+    if (value === undefined) {
+      return null;
+    }
     const validNums = [1, 2, 3, 4, 5, 10];
     if (!isInteger(value)) {
       return `Value must be a valid integer`;
@@ -229,11 +253,11 @@ export function validateOfferSegments(
   const errors: ErrorObject[] = [];
 
   //First transform offerItems to a segment: bonus type: bonuses schema for easier validation..
-  const segmentBonuses: { [key: string]: { [key: string]: string | null } } =
+  const segmentBonuses: { [key: string]: { [key: string]: string | undefined } } =
     {};
 
   for (const segment in offerItems[0].values) {
-    const values: Record<string, string | null> = {};
+    const values: Record<string, string | undefined> = {};
     for (const offerItem of offerItems) {
       values[offerItem.bonusType] = offerItem.values[segment];
     }

@@ -1,8 +1,5 @@
-export interface ThemeParameter {
-  parameterName: string;
-  parameterType: string;
+import { BaseParameter } from "./campaignTypes";
+
+export interface ThemeParameter extends BaseParameter {
   communicationType: string;
-  values: {
-    [key: string]: string | null;
-  };
 }

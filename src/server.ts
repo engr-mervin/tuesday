@@ -30,6 +30,7 @@ import {
 import {
   interValidation,
   validateCampaignItem,
+  validatePopulationFilters,
 } from "./validators/campaignValidators.js";
 import {
   ActionFlags,
@@ -49,6 +50,8 @@ import {
 import {
   DateCellValue,
   DropdownCellValue,
+  FileCellRawValue,
+  FileCellValue,
   HourCellValue,
   NumberCellValue,
   TimelineCellValue,
@@ -308,9 +311,6 @@ async function getCampaignFields(
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Campaign_Date_Range
     ];
-  const abCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.AB];
-
   const statusCID =
     infraFFNtoCID[PARAMETER_LEVEL.Campaign][
       FRIENDLY_FIELD_NAMES.Campaign_Status
@@ -348,9 +348,6 @@ async function getCampaignFields(
     throw new ConfigError("missing-configuration", missingConfigs);
   }
 
-  const tiersCID =
-    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
-
   const dateRange = campaignItem.values[dateRangeCID] as TimelineCellValue;
   const status = campaignItem.values[statusCID] as string;
 
@@ -373,15 +370,27 @@ async function getCampaignFields(
   if (status === undefined) {
     missingConfigs.push(FRIENDLY_FIELD_NAMES.Campaign_Status);
   }
+  if (theme === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Theme);
+  }
+  if (offer === undefined) {
+    missingConfigs.push(FRIENDLY_FIELD_NAMES.Offer);
+  }
 
   if (missingConfigs.length) {
     throw new ConfigError("missing-column", missingConfigs);
   }
   const { from: startDate, to: endDate } = dateRange!;
 
+  const abCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.AB];
+
   const ab = abCID
     ? (campaignItem.values[abCID] as NumberCellValue)
     : undefined;
+
+  const tiersCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Tiers];
 
   const tiers = tiersCID
     ? (campaignItem.values[tiersCID] as DropdownCellValue)
@@ -401,6 +410,36 @@ async function getCampaignFields(
   const isOneTime = isOneTimeCampaignCID
     ? (campaignItem.values[isOneTimeCampaignCID] as boolean)
     : undefined;
+
+  const closedPopulationTypeCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][
+      FRIENDLY_FIELD_NAMES.Closed_Population
+    ];
+
+  const closedPopulationType = closedPopulationTypeCID
+    ? (campaignItem.values[closedPopulationTypeCID] as string)
+    : undefined;
+
+  const closedPopulationFileCID =
+    infraFFNtoCID[PARAMETER_LEVEL.Campaign][FRIENDLY_FIELD_NAMES.Files];
+
+  const closedPopulationCell = closedPopulationFileCID
+    ? campaignItem.cells[closedPopulationFileCID]
+    : undefined;
+
+  const closedPopulationFiles = closedPopulationCell
+    ? (closedPopulationCell.rawValue as FileCellRawValue)
+    : undefined;
+
+  const closedPopulation = {
+    type: closedPopulationType,
+    files: closedPopulationFiles
+      ? closedPopulationFiles.files.map((file) => ({
+          assetId: file.assetId,
+          name: file.name,
+        }))
+      : undefined,
+  };
 
   const allRegulations = getItemsFromInfraMapping(infraMapping, (item) => {
     return item.values[ENV.INFRA.CIDS.COLUMN_GROUP] === COLUMN_GROUP.Market;
@@ -427,6 +466,7 @@ async function getCampaignFields(
   for (let i = 0; i < allPopFilters.length; i++) {
     const popFilter = allPopFilters[i];
 
+    //TODO: Check if sunday uses FFN or column title for the name
     const popFilterName = popFilter.values[ENV.INFRA.CIDS.FFN] as string;
     const popFilterCID = popFilter.values[ENV.INFRA.CIDS.COLUMN_ID] as string;
     const popFilterColType = popFilter.values[
@@ -447,7 +487,6 @@ async function getCampaignFields(
 
     const regulationCID = regulation.values[ENV.INFRA.CIDS.COLUMN_ID] as string;
 
-    //TODO: Change this to only include checked regulations
     const isRegulationChecked = Boolean(
       allMarketsChecked || campaignItem.values[regulationCID]
     );
@@ -470,6 +509,7 @@ async function getCampaignFields(
     offer,
     isOneTime,
     populationFilters,
+    closedPopulation,
   };
 }
 
@@ -567,6 +607,14 @@ async function processCampaignItem(
       return validationResult;
     }
 
+    const popValidationResult = validatePopulationFilters(
+      campaignFields.populationFilters
+    );
+
+    if (popValidationResult.status !== "success") {
+      return validationResult;
+    }
+
     return {
       status: "success",
       data: campaignFields as ValidatedCampaignFields,
@@ -609,7 +657,7 @@ function getThemeItems(
   //value is null if reg name is not found
   for (let i = 0; i < themeGroup.items.length; i++) {
     const themeItem = themeGroup.items[i];
-    const valuesObj: Record<string, string | null> = {};
+    const valuesObj: Record<string, string | undefined> = {};
     for (let i = 0; i < activeRegulations.length; i++) {
       const regulation = activeRegulations[i];
       const regulationName = regulation.name;
@@ -620,11 +668,7 @@ function getThemeItems(
       const cells = Object.values(themeItem.cells);
       const cell = cells.find((cell) => cell.title === regulationName);
 
-      //We're treating columns that does not exist to be null
-      //This is against our convention to set undefined to mean does not exist
-      //and null for existing but empty value
-      //The only reason is for legacy
-      valuesObj[regulationName] = cell ? (cell.value as string) : null;
+      valuesObj[regulationName] = cell ? (cell.value as string) : undefined;
     }
 
     const parameterType = themeItem.values[parameterTypeCID] as string;
@@ -798,7 +842,9 @@ async function getConfigItems(
         value: subitem.values[value!.columnId] as string,
         //NOTE: For file columns .values return asset id.
         //We will still need to extract the asset url to access the file..
-        files: files ? (subitem.values[files.columnId] as string) : undefined,
+        files: files
+          ? (subitem.values[files.columnId] as FileCellValue)
+          : undefined,
       };
 
       fields.push(field);
@@ -856,7 +902,7 @@ function getOfferItems(
     const offerItems: BonusOfferItem[] = [];
     for (let i = 0; i < offerGroup.items.length; i++) {
       const offerItem = offerGroup.items[i];
-      const valuesObj: Record<string, string> = {};
+      const valuesObj: Record<string, string | undefined> = {};
       for (let i = 0; i < activeRegulations.length; i++) {
         const regulation = activeRegulations[i];
         const regulationName = regulation.name;
@@ -867,12 +913,8 @@ function getOfferItems(
 
         //This happens if a market chosen in campaign and is in configuration,
         //but not declared on the boards or the cell id has mismatch
-        //just continue;
-        if (!cell) {
-          continue;
-        }
-
-        valuesObj[regulationName] = cell.value as string;
+        //use undefined, handle appropriately on validators;
+        valuesObj[regulationName] = cell ? (cell.value as string) : undefined;
       }
 
       //NOTE: Only the checked markets are added here

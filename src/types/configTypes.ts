@@ -2,6 +2,7 @@
 //discriminant
 //Will include neptune/pacman/promocode/promotion page/banner/etc
 
+import { FileCellValue } from "monstaa/dist/classes/Cell.js";
 import { CONFIGURATION_TYPES } from "../constants/infraConstants.js";
 import { Round } from "../validators/roundValidators.js";
 
@@ -14,7 +15,7 @@ export interface ConfigItemField {
   fieldId: string;
   value: string;
   //Only this field is optional
-  files: string | undefined;
+  files: FileCellValue | undefined;
 }
 
 export interface ConfigItem {

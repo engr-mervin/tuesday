@@ -16,6 +16,26 @@ export function isCommaSeparatedListOfIntegers(input: string) {
   return nums.every((num) => isIntegerNonEmpty(num));
 }
 
+export function isCommaSeparatedList(input: string, predicate: (v: string) => boolean) {
+  const values = input.split(",");
+  return values.every((value) => predicate(value));
+}
+
+export function isValidStringRange(str: string) {
+  const strs = str.split("-");
+
+  if (strs.length !== 2) {
+    return false;
+  }
+  const [min, max] = strs.map(Number);
+
+  if (!isInteger(min) || !isInteger(max)) {
+    return false;
+  }
+
+  return min < max;
+}
+
 export function isNumberInRange(
   number: any,
   minInclusive: number = -Infinity,
