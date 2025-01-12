@@ -1,4 +1,5 @@
 import { BANNER_REGEX } from "../constants/regexConstants.js";
+import { stringToDateDDMMYYYY } from "./dateFunctions.js";
 
 //Will return true for empty strings
 export function isInteger(number: string | number | null): number is number {
@@ -16,9 +17,54 @@ export function isCommaSeparatedListOfIntegers(input: string) {
   return nums.every((num) => isIntegerNonEmpty(num));
 }
 
-export function isCommaSeparatedList(input: string, predicate: (v: string) => boolean) {
+export function isCommaSeparatedList(
+  input: string,
+  predicate: (v: string) => boolean
+) {
   const values = input.split(",");
   return values.every((value) => predicate(value));
+}
+
+export function isValidInvertedStringRange(
+  str: string,
+  sep: string = "-",
+  validator?: (inp: string) => boolean
+) {
+  const strs = str.split(sep);
+
+  if (strs.length !== 2) {
+    return false;
+  }
+  if (validator && (!validator(strs[0]) || !validator(strs[1]))) {
+    return false;
+  }
+
+  const [max, min] = strs.map(Number);
+
+  if (!isInteger(min) || !isInteger(max)) {
+    return false;
+  }
+
+  return min < max;
+}
+
+export function isValidStringDateRange(
+  str: string,
+  sep: string = "-",
+  sep2: string = "."
+) {
+  const strs = str.split(sep);
+
+  if (strs.length !== 2) {
+    return false;
+  }
+  const [min, max] = strs.map((inp) => stringToDateDDMMYYYY(inp, sep2));
+
+  if (!min || !max) {
+    return false;
+  }
+
+  return min.getTime() < max.getTime();
 }
 
 export function isValidStringRange(str: string) {

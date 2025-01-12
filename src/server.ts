@@ -44,8 +44,9 @@ import {
   ValidatedConfigItem,
 } from "./types/configTypes.js";
 import {
-  validateCampaignConfigs,
+  validateConfigGroup,
   validateConfigItems,
+  validateConfigSegments,
 } from "./validators/configValidators.js";
 import {
   DateCellValue,
@@ -1062,32 +1063,54 @@ async function processConfigGroup(
       infraFFNtoCID,
       allRegulations
     );
+    if (configItems.length === 0) {
+      return {
+        status: "success",
+        data: [],
+      };
+    }
 
-    const validationResult = validateConfigItems(configItems);
+    const configErrors = validateConfigItems(configItems);
 
-    if (validationResult.status === "fail") {
+    if (configErrors.length > 0) {
       return {
         status: "fail",
         data: [
           {
             name: "Configuration",
-            errors: validationResult.data,
+            errors: configErrors,
           },
         ],
       };
     }
 
-    const validateCampaignResult = validateCampaignConfigs(
-      validationResult.data
+    const segmentErrors = validateConfigSegments(
+      configItems as ValidatedConfigItem[]
     );
 
-    if (validateCampaignResult.status === "fail") {
+    if (segmentErrors.length > 0) {
       return {
         status: "fail",
         data: [
           {
-            name: "Config",
-            errors: validateCampaignResult.data,
+            name: "Configuration Segments",
+            errors: segmentErrors,
+          },
+        ],
+      };
+    }
+
+    const configGroupErrors = validateConfigGroup(
+      configItems as ValidatedConfigItem[]
+    );
+
+    if (configGroupErrors.length > 0) {
+      return {
+        status: "fail",
+        data: [
+          {
+            name: "Configuration Group",
+            errors: configErrors,
           },
         ],
       };
@@ -1095,7 +1118,7 @@ async function processConfigGroup(
 
     return {
       status: "success",
-      data: validateCampaignResult.data,
+      data: configItems as ValidatedConfigItem[],
     };
   } catch (err) {
     throw new InfraError("Config", err as Error);

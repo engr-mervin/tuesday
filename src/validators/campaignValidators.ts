@@ -15,6 +15,8 @@ import {
   isCommaSeparatedListOfIntegers,
   isInteger,
   isIntegerInRange,
+  isValidInvertedStringRange,
+  isValidStringDateRange,
   isValidStringRange,
 } from "../helpers/validatorFunctions.js";
 import {
@@ -262,7 +264,7 @@ export function validatePopulationFilters(
 ): ValidationResult<undefined, string[]> {
   const errors: string[] = [];
 
-  //Validate vendors existing if we have games
+  //Validate vendors existing if games is defined
   const casinoGames = popFilters[POPULATION_FILTERS.Cashback_Casino_Games];
   const casinoVendors = popFilters[POPULATION_FILTERS.Cashback_Casino_Vendors];
 
@@ -282,12 +284,24 @@ export function validatePopulationFilters(
     if (POPULATION_FILTER_TYPES.Round_Based.includes(popFilterKey)) {
       const isValidRange = isValidStringRange(popFilter.value);
       if (!isValidRange) {
-        `${popFilterKey} is not a valid range.`;
+        errors.push(`${popFilterKey} is not a valid range.`);
       }
     }
 
-    if(POPULATION_FILTER_TYPES.Last_Bet_Date.includes(popFilterKey)){
-      
+    if (POPULATION_FILTER_TYPES.Last_Bet_Date.includes(popFilterKey)) {
+      //Last bet date is either MAX-MIN or Date1-Date2
+      const isValidInvertedRange = isValidInvertedStringRange(
+        popFilter.value,
+        "-",
+        (inp) => isIntegerInRange(inp, 0, 1095)
+      );
+      const isValidDateRange = isValidStringDateRange(popFilter.value);
+
+      if (!isValidInvertedRange && !isValidDateRange) {
+        errors.push(
+          `${popFilterKey} is not a valid XXX-YYY (MAX-MIN integer) range or DD.MM.YYYY-DD.MM.YYYY range.`
+        );
+      }
     }
 
     if (POPULATION_FILTERS.Cashback_Casino_Vendors === popFilterKey) {
@@ -321,7 +335,7 @@ export function validatePopulationFilters(
 export function validateCampaignItem(
   campaignFields: CampaignFields
 ): ValidationResult<ValidatedCampaignFields> {
-  const errors = [];
+  const errors: (string | ErrorObject)[] = [];
 
   if (
     !campaignFields.theme ||
@@ -449,6 +463,18 @@ export function validateCampaignItem(
       errors.push(
         `Campaign control group value must be an integer between 10-90 (inclusive) or 0.`
       );
+    }
+  }
+
+  if (Object.keys(campaignFields.populationFilters).length > 0) {
+    const popErrors = validatePopulationFilters(
+      campaignFields.populationFilters
+    );
+    if (popErrors.status === "fail") {
+      errors.push({
+        name: "Population Filters",
+        errors: popErrors.data,
+      });
     }
   }
 

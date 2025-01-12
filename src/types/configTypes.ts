@@ -28,13 +28,21 @@ export interface ConfigItem {
   fields?: ConfigItemField[];
 }
 
+export interface ConfigSegments {
+  [segmentName: string]: {
+    [configType in keyof typeof CONFIGURATION_TYPES]?: {
+      fieldName: string;
+      value: string;
+    }[];
+  };
+}
 
 export interface ValidatedConfigItem {
-    name: string;
-    round: Round;
-    type: keyof typeof CONFIGURATION_TYPES;
-    fieldName: string;
-    segments: Record<string, string>;
-    //Optional for record with no subitems
-    fields?: ConfigItemField[];
+  name: string;
+  round: Round;
+  type: keyof typeof CONFIGURATION_TYPES;
+  fieldName: string;
+  segments: Record<string, string>;
+  //Optional for record with no subitems
+  fields?: ConfigItemField[];
 }

@@ -24,3 +24,5 @@ export type FailedValidationResult<U = ErrorObject[]> = {
   status: "fail";
   data: U;
 };
+
+export type Time = { readonly __brand: unique symbol } & string;

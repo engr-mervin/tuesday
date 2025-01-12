@@ -1,3 +1,4 @@
+import { start } from "repl";
 import {
   CONFIGURATION_TYPES,
   FIELDS_BANNER,
@@ -40,13 +41,12 @@ import {
   ConfigItemField,
   ValidatedConfigItem,
 } from "../types/configTypes.js";
-import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
+import { ErrorObject, Time, ValidationResult } from "../types/generalTypes.js";
 import { validateParameter } from "./parameterValidators.js";
 import { Round } from "./roundValidators.js";
+import { timeStringToMinutes } from "../helpers/dateFunctions.js";
 
-export function validateConfigItems(
-  configItems: ConfigItem[]
-): ValidationResult<ValidatedConfigItem[]> {
+export function validateConfigItems(configItems: ConfigItem[]): ErrorObject[] {
   const errors: ErrorObject[] = [];
 
   for (let i = 0; i < configItems.length; i++) {
@@ -72,19 +72,67 @@ export function validateConfigItems(
       });
     }
   }
-  return errors.length
-    ? { status: "fail", data: errors }
-    : {
-        status: "success",
-        data: configItems as ValidatedConfigItem[],
-      };
+  return errors;
 }
 
-export function validateCampaignConfigs(
+//segment name : {type, fieldName, value}
+// {[type]: value}[]
+export function validateConfigSegments(
   configItems: ValidatedConfigItem[]
-): ValidationResult<ValidatedConfigItem[]> {
+): ErrorObject[] {
+  const errors: ErrorObject[] = [];
+
+  const banners = configItems.filter(
+    (item) => item.type === CONFIGURATION_TYPES.Banner
+  );
+
+  const startDay = banners.find(
+    (banner) => banner.fieldName === FIELDS_BANNER.Banner_Duration_Start_Day
+  );
+  const endDay = banners.find(
+    (banner) => banner.fieldName === FIELDS_BANNER.Banner_Duration_End_Day
+  );
+
+  const startHour = banners.find(
+    (banner) => banner.fieldName === FIELDS_BANNER.Banner_Schedule_Start_Hour
+  );
+  const endHour = banners.find(
+    (banner) => banner.fieldName === FIELDS_BANNER.Banner_Schedule_End_Hour
+  );
+
+  for (const segment in configItems[0].segments) {
+    const segErrors: string[] = [];
+    if (startDay && endDay && startHour && endHour) {
+      if (startDay.segments[segment] === endDay.segments[segment]) {
+        const startMinutes = timeStringToMinutes(
+          startHour.segments[segment] as Time
+        );
+        const endMinutes = timeStringToMinutes(
+          endHour.segments[segment] as Time
+        );
+
+        if (startMinutes >= endMinutes) {
+          segErrors.push(`Start hour is greater than End hour.`);
+        }
+      }
+    }
+
+    if (segErrors.length) {
+      errors.push({
+        name: segment,
+        errors: segErrors,
+      });
+    }
+  }
+
+  return errors;
+}
+
+export function validateConfigGroup(
+  configItems: ValidatedConfigItem[]
+): string[] {
   //Validate config items that can only have one record...
-  const errors = [];
+  const errors: string[] = [];
   const configSet = new Set();
 
   //NOTE: Currently not round scoped
@@ -160,14 +208,34 @@ export function validateCampaignConfigs(
   const neptuneBind = configItems.find(
     (item) => item.type === CONFIGURATION_TYPES.Neptune_Bind
   );
-  const neptuneConfig = configItems.find(
+  const neptuneConfigs = configItems.filter(
     (item) => item.type === CONFIGURATION_TYPES.Neptune_Config
   );
 
-  if (neptuneBind && !neptuneConfig) {
-    errors.push(
-      `Neptune bind requires at least one neptune config definition.`
+  if (
+    (neptuneBind && neptuneConfigs.length === 0) ||
+    (!neptuneBind && neptuneConfigs.length > 0)
+  ) {
+    errors.push(`Neptune bind and neptune config should be defined together.`);
+  }
+
+  //Also validate if all values in neptune bind exists in neptune config.
+  if (neptuneBind && neptuneConfigs.length > 0) {
+    const neptuneNames = Object.values(neptuneBind.segments).filter(
+      (nepName) => nepName
     );
+
+    const missingNeptunes = neptuneNames.filter((neptuneName) =>
+      neptuneConfigs.find((config) => config.name === neptuneName)
+    );
+
+    if (missingNeptunes.length > 0) {
+      errors.push(
+        `Neptune configs are missing in neptune bind: ${arrayToCommaSeparatedList(
+          missingNeptunes
+        )}`
+      );
+    }
   }
 
   const promoText = configItems.find(
@@ -192,12 +260,7 @@ export function validateCampaignConfigs(
   return errors.length
     ? {
         status: "fail",
-        data: [
-          {
-            name: "Campaign Configs",
-            errors,
-          },
-        ],
+        data: errors,
       }
     : {
         status: "success",
@@ -231,7 +294,6 @@ export const configValidationRules: Record<
       }
     }
 
-    
     //Validate value
     const paramSet = new Set();
     const nonParamSet = new Set();
@@ -854,7 +916,9 @@ export const configValidationRules: Record<
 
     if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingRequiredFields)}`
+        `Missing required fields: ${arrayToCommaSeparatedList(
+          missingRequiredFields
+        )}`
       );
     }
 
@@ -1030,7 +1094,9 @@ export const configValidationRules: Record<
 
     if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingRequiredFields)}`
+        `Missing required fields: ${arrayToCommaSeparatedList(
+          missingRequiredFields
+        )}`
       );
     }
 
@@ -1092,7 +1158,9 @@ export const configValidationRules: Record<
 
     if (missingRequiredFields.length) {
       errors.push(
-        `Missing required fields: ${arrayToCommaSeparatedList(missingRequiredFields)}`
+        `Missing required fields: ${arrayToCommaSeparatedList(
+          missingRequiredFields
+        )}`
       );
     }
 
