@@ -9,7 +9,7 @@ export interface ErrorObject {
 //e.g. if(field){obj[field] = value}, as compared to just declaring the whole object in one place.
 export type Optional<T> = T | undefined;
 
-export type ValidationResult<T = undefined, U = ErrorObject[]> =
+export type ValidationResult<T = undefined, U = (ErrorObject | string)[]> =
   | (T extends undefined
       ? {
           status: "success";
@@ -20,7 +20,7 @@ export type ValidationResult<T = undefined, U = ErrorObject[]> =
         })
   | FailedValidationResult<U>;
 
-export type FailedValidationResult<U = ErrorObject[]> = {
+export type FailedValidationResult<U = (ErrorObject | string)[]> = {
   status: "fail";
   data: U;
 };

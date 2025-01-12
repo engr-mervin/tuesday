@@ -567,24 +567,37 @@ async function getConfigGroup(configBID: string, groupName: string) {
 function processRoundItems(
   roundItems: Item[],
   infraFFNtoCID: Record<string, Record<string, string>>
-): ValidationResult<ValidatedRoundFields[]> {
+): ValidationResult<ValidatedRoundFields[], ErrorObject> {
   try {
     const roundsFields = getRoundItems(roundItems, infraFFNtoCID);
 
-    const validateCampaignRoundsResult = validateCampaignRounds(roundsFields);
+    const roundErrors = validateCampaignRounds(roundsFields);
 
-    if (validateCampaignRoundsResult.status !== "success") {
-      return validateCampaignRoundsResult;
+    if (roundErrors.length > 0) {
+      return {
+        status: "fail",
+        data: {
+          name: "Campaign Rounds",
+          errors: roundErrors,
+        },
+      };
     }
-    const validationResult = validateRoundItems(roundsFields);
 
-    if (validationResult.status !== "success") {
-      return validationResult;
+    const roundItemErrors = validateRoundItems(roundsFields);
+
+    if (roundItemErrors.length > 0) {
+      return {
+        status: "fail",
+        data: {
+          name: "Rounds",
+          errors: roundItemErrors,
+        },
+      };
     }
 
     return {
       status: "success",
-      data: validationResult.data,
+      data: roundsFields as ValidatedRoundFields[],
     };
   } catch (err) {
     throw new InfraError("Round", err as Error);
@@ -595,25 +608,39 @@ async function processCampaignItem(
   campaignItem: Item,
   infraFFNtoCID: Record<string, Record<string, string>>,
   infraMapping: Record<string, Record<string, Item>>
-): Promise<ValidationResult<ValidatedCampaignFields>> {
+): Promise<ValidationResult<ValidatedCampaignFields, ErrorObject>> {
   try {
     const campaignFields = await getCampaignFields(
       campaignItem,
       infraFFNtoCID,
       infraMapping
     );
-    const validationResult = validateCampaignItem(campaignFields);
+    const campaignErrors = validateCampaignItem(campaignFields);
 
-    if (validationResult.status !== "success") {
-      return validationResult;
+    if (campaignErrors.length > 0) {
+      return {
+        status: "fail",
+        data: {
+          name: "Campaign",
+          errors: campaignErrors,
+        },
+      };
     }
 
-    const popValidationResult = validatePopulationFilters(
-      campaignFields.populationFilters
-    );
+    if (Object.keys(campaignFields.populationFilters).length !== 0) {
+      const popFilterErrors = validatePopulationFilters(
+        campaignFields.populationFilters
+      );
 
-    if (popValidationResult.status !== "success") {
-      return validationResult;
+      if (popFilterErrors.length > 0) {
+        return {
+          status: "fail",
+          data: {
+            name: "Campaign Population Filters",
+            errors: popFilterErrors,
+          },
+        };
+      }
     }
 
     return {
@@ -623,7 +650,6 @@ async function processCampaignItem(
   } catch (err) {
     throw new InfraError("Campaign", err as Error);
   }
-  //VALIDATION LAYER
 }
 
 //NOTE: Can throw error for not existing required config keys
@@ -978,7 +1004,7 @@ function processThemeGroup(
   themeGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<ThemeParameter[]> {
+): ValidationResult<ThemeParameter[], ErrorObject> {
   try {
     const themeItems = getThemeItems(
       themeGroup,
@@ -986,20 +1012,21 @@ function processThemeGroup(
       activeRegulations
     );
 
-    const validationResult = validateThemeItems(themeItems);
-    if (validationResult.status === "fail") {
+    const themeErrors = validateThemeItems(themeItems);
+    if (themeErrors.length > 0) {
       return {
         status: "fail",
-        data: [
-          {
-            name: "Theme",
-            errors: validationResult.data,
-          },
-        ],
+        data: {
+          name: "Theme",
+          errors: themeErrors,
+        },
       };
     }
 
-    return validationResult;
+    return {
+      status: "success",
+      data: themeItems,
+    };
   } catch (err) {
     throw new InfraError("Theme", err as Error);
   }
@@ -1009,7 +1036,10 @@ function processOfferGroup(
   offerGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   activeRegulations: Regulation[]
-): ValidationResult<ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[]> {
+): ValidationResult<
+  ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[],
+  ErrorObject
+> {
   try {
     const { offers, isBonus } = getOfferItems(
       offerGroup,
@@ -1017,35 +1047,54 @@ function processOfferGroup(
       activeRegulations
     );
 
-    const paramValidateResult = validateOfferParameters(offers);
-    if (paramValidateResult.status !== "success") {
-      return paramValidateResult;
+    const paramErrors = validateOfferParameters(offers);
+    if (paramErrors.length > 0) {
+      return {
+        status: "fail",
+        data: {
+          name: "Offer Parameters",
+          errors: paramErrors,
+        },
+      };
     }
 
     //isBonus = is if bonus field name and bonus type exists in monday boards
     if (isBonus) {
-      const offerValidateResult = validateOfferBonuses(offers);
+      const bonusErrors = validateOfferBonuses(offers);
 
-      if (offerValidateResult.status !== "success") {
-        return offerValidateResult;
+      if (bonusErrors.length > 0) {
+        return {
+          status: "fail",
+          data: {
+            name: "Offer Bonuses",
+            errors: bonusErrors,
+          },
+        };
       }
       //Validate offer items against each other
-      const segmentValidateResult = validateOfferSegments(
-        offerValidateResult.data
+      const segmentErrors = validateOfferSegments(
+        offers as ValidatedBonusOfferItem[]
       );
-      if (segmentValidateResult.status !== "success") {
-        return segmentValidateResult;
+
+      if (segmentErrors.length > 0) {
+        return {
+          status: "fail",
+          data: {
+            name: "Offer Segments",
+            errors: segmentErrors,
+          },
+        };
       }
 
       return {
         status: "success",
-        data: segmentValidateResult.data,
+        data: offers as ValidatedBonusOfferItem[],
       };
     }
 
     return {
       status: "success",
-      data: offers,
+      data: offers as ValidatedNonBonusOfferItem[],
     };
   } catch (err) {
     throw new InfraError("Offer", err as Error);
@@ -1056,64 +1105,53 @@ async function processConfigGroup(
   configGroup: Group,
   infraFFNtoCID: Record<string, Record<string, string>>,
   allRegulations: Regulation[]
-): Promise<ValidationResult<ValidatedConfigItem[], ErrorObject[]>> {
+): Promise<ValidationResult<ValidatedConfigItem[], ErrorObject>> {
   try {
     const configItems = await getConfigItems(
       configGroup,
       infraFFNtoCID,
       allRegulations
     );
-    if (configItems.length === 0) {
-      return {
-        status: "success",
-        data: [],
-      };
-    }
+    if (configItems.length !== 0) {
+      const configErrors = validateConfigItems(configItems);
 
-    const configErrors = validateConfigItems(configItems);
-
-    if (configErrors.length > 0) {
-      return {
-        status: "fail",
-        data: [
-          {
+      if (configErrors.length > 0) {
+        return {
+          status: "fail",
+          data: {
             name: "Configuration",
             errors: configErrors,
           },
-        ],
-      };
-    }
+        };
+      }
 
-    const segmentErrors = validateConfigSegments(
-      configItems as ValidatedConfigItem[]
-    );
+      const segmentErrors = validateConfigSegments(
+        configItems as ValidatedConfigItem[]
+      );
 
-    if (segmentErrors.length > 0) {
-      return {
-        status: "fail",
-        data: [
-          {
+      if (segmentErrors.length > 0) {
+        return {
+          status: "fail",
+          data: {
             name: "Configuration Segments",
             errors: segmentErrors,
           },
-        ],
-      };
-    }
+        };
+      }
 
-    const configGroupErrors = validateConfigGroup(
-      configItems as ValidatedConfigItem[]
-    );
+      const configGroupErrors = validateConfigGroup(
+        configItems as ValidatedConfigItem[]
+      );
 
-    if (configGroupErrors.length > 0) {
-      return {
-        status: "fail",
-        data: [
-          {
+      if (configGroupErrors.length > 0) {
+        return {
+          status: "fail",
+          data: {
             name: "Configuration Group",
             errors: configErrors,
           },
-        ],
-      };
+        };
+      }
     }
 
     return {
@@ -1246,12 +1284,14 @@ async function processError(
 }
 
 async function processFail(
-  failedDetails: FailedValidationResult<ErrorObject[]>[],
+  failedDetails: FailedValidationResult<ErrorObject[] | ErrorObject>[],
   itemId: number
 ) {
   let reportString = ``;
   for (const details of failedDetails) {
-    reportString += generateReportString(details.data);
+    reportString += generateReportString(
+      Array.isArray(details.data) ? details.data : [details.data]
+    );
   }
   await mondayClient.writeUpdate(itemId, reportString);
 }

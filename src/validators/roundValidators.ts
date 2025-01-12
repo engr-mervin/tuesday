@@ -4,9 +4,7 @@ import { RoundFields, ValidatedRoundFields } from "../types/roundTypes.js";
 
 export type Round = (typeof ROUND_TYPES)[keyof typeof ROUND_TYPES];
 
-export function validateCampaignRounds(
-  roundsFields: RoundFields[]
-): ValidationResult {
+export function validateCampaignRounds(roundsFields: RoundFields[]): string[] {
   const errors: string[] = [];
 
   if (roundsFields.length === 0) {
@@ -36,24 +34,12 @@ export function validateCampaignRounds(
     errors.push(`Round should have an Intro Round.`);
   }
 
-  return errors.length
-    ? {
-        status: "fail",
-        data: [
-          {
-            name: "All",
-            errors,
-          },
-        ],
-      }
-    : {
-        status: "success",
-      };
+  return errors;
 }
 
 export function validateRoundItems(
   roundFieldsArr: RoundFields[]
-): ValidationResult<ValidatedRoundFields[]> {
+): ErrorObject[] {
   const roundErrors: ErrorObject[] = [];
   for (const roundFields of roundFieldsArr) {
     const errors: string[] = [];
@@ -91,13 +77,5 @@ export function validateRoundItems(
   //End round date can be null if is one time is checked, this will be in inter-campaign & round-validation
 
   //No need to validate omg,sms,push,email hours because Monday field will always return a valid value
-  return roundErrors.length
-    ? {
-        status: "fail",
-        data: roundErrors,
-      }
-    : {
-        status: "success",
-        data: roundFieldsArr as ValidatedRoundFields[],
-      };
+  return roundErrors;
 }

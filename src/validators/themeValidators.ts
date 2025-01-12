@@ -4,7 +4,7 @@ import { validateParameter } from "./parameterValidators.js";
 
 export function validateThemeItems(
   themeItems: ThemeParameter[]
-): ValidationResult<ThemeParameter[]> {
+): ErrorObject[] {
   const errors: ErrorObject[] = [];
   for (const themeItem of themeItems) {
     const name = themeItem.parameterName;
@@ -17,13 +17,5 @@ export function validateThemeItems(
     }
   }
 
-  return errors.length
-    ? {
-        status: "fail",
-        data: errors,
-      }
-    : {
-        status: "success",
-        data: themeItems,
-      };
+  return errors;
 }

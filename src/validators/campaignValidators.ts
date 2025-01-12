@@ -261,7 +261,7 @@ export function interValidation(
 
 export function validatePopulationFilters(
   popFilters: PopulationFilters
-): ValidationResult<undefined, string[]> {
+): string[] {
   const errors: string[] = [];
 
   //Validate vendors existing if games is defined
@@ -322,20 +322,11 @@ export function validatePopulationFilters(
     }
   }
 
-  return errors.length
-    ? {
-        status: "fail",
-        data: errors,
-      }
-    : {
-        status: "success",
-      };
+  return errors;
 }
 
-export function validateCampaignItem(
-  campaignFields: CampaignFields
-): ValidationResult<ValidatedCampaignFields> {
-  const errors: (string | ErrorObject)[] = [];
+export function validateCampaignItem(campaignFields: CampaignFields): string[] {
+  const errors: string[] = [];
 
   if (
     !campaignFields.theme ||
@@ -466,30 +457,5 @@ export function validateCampaignItem(
     }
   }
 
-  if (Object.keys(campaignFields.populationFilters).length > 0) {
-    const popErrors = validatePopulationFilters(
-      campaignFields.populationFilters
-    );
-    if (popErrors.status === "fail") {
-      errors.push({
-        name: "Population Filters",
-        errors: popErrors.data,
-      });
-    }
-  }
-
-  return errors.length
-    ? {
-        status: "fail",
-        data: [
-          {
-            name: "Campaign",
-            errors,
-          },
-        ],
-      }
-    : {
-        status: "success",
-        data: campaignFields as ValidatedCampaignFields,
-      };
+  return errors;
 }

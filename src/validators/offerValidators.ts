@@ -198,7 +198,7 @@ export function validateBonus(offerItem: BonusOfferItem): string[] {
 
 export function validateOfferParameters(
   offerItems: BonusOfferItem[] | NonBonusOfferItem[]
-): ValidationResult {
+): ErrorObject[] {
   const errors: ErrorObject[] = [];
 
   for (const offerItem of offerItems) {
@@ -211,19 +211,12 @@ export function validateOfferParameters(
       });
     }
   }
-  return errors.length
-    ? {
-        status: "fail",
-        data: errors,
-      }
-    : {
-        status: "success",
-      };
+  return errors;
 }
 
 export function validateOfferBonuses(
   offerItems: BonusOfferItem[]
-): ValidationResult<ValidatedBonusOfferItem[], ErrorObject[]> {
+): ErrorObject[] {
   const errors: ErrorObject[] = [];
 
   for (const offerItem of offerItems) {
@@ -236,25 +229,18 @@ export function validateOfferBonuses(
       });
     }
   }
-  return errors.length
-    ? {
-        status: "fail",
-        data: errors,
-      }
-    : {
-        status: "success",
-        data: offerItems as ValidatedBonusOfferItem[],
-      };
+  return errors;
 }
 
 export function validateOfferSegments(
   offerItems: ValidatedBonusOfferItem[]
-): ValidationResult<ValidatedBonusOfferItem[], ErrorObject[]> {
+): ErrorObject[] {
   const errors: ErrorObject[] = [];
 
   //First transform offerItems to a segment: bonus type: bonuses schema for easier validation..
-  const segmentBonuses: { [key: string]: { [key: string]: string | undefined } } =
-    {};
+  const segmentBonuses: {
+    [key: string]: { [key: string]: string | undefined };
+  } = {};
 
   for (const segment in offerItems[0].values) {
     const values: Record<string, string | undefined> = {};
@@ -314,13 +300,5 @@ export function validateOfferSegments(
     }
   }
 
-  return errors.length
-    ? {
-        status: "success",
-        data: offerItems,
-      }
-    : {
-        status: "fail",
-        data: errors,
-      };
+  return errors;
 }
