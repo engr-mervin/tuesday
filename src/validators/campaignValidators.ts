@@ -274,7 +274,7 @@ export function validatePopulationFilters(
 
   for (const popFilterKey in popFilters) {
     const popFilter = popFilters[popFilterKey];
-    if (!Object.keys(POPULATION_FILTERS).includes(popFilterKey)) {
+    if (!Object.values(POPULATION_FILTERS).includes(popFilterKey)) {
       errors.push(`
         ${popFilterKey} is not a supported Population Filter.
         `);

@@ -71,6 +71,8 @@ import {
 } from "./types/generalTypes.js";
 import { InfraError } from "./classes/InfraError.js";
 import { validateThemeItems } from "./validators/themeValidators.js";
+import { redisClient } from "./clients/redisClient.js";
+import { Board, JSONBoard } from "monstaa/dist/classes/Board.js";
 const fastify = Fastify({
   logger: true,
 });
@@ -84,12 +86,13 @@ fastify.post("/import-campaign", async function handler(request, reply) {
   const webHook = request.body as MondayWebHook;
   //TODO: For persistence, save this to an SQL database
 
+  let result;
   try {
-    await importCampaign(webHook);
+    result = await importCampaign(webHook);
   } catch (error) {
     console.error((error as Error).stack);
   }
-  reply.code(200).send({ status: "ok" });
+  reply.code(200).send(result);
 });
 
 fastify.post("/send-update", async function handler(request, reply) {
@@ -466,15 +469,19 @@ async function getCampaignFields(
   > = {};
   for (let i = 0; i < allPopFilters.length; i++) {
     const popFilter = allPopFilters[i];
+    const popFilterCID = popFilter.values[ENV.INFRA.CIDS.COLUMN_ID] as string;
+    const popFilterValue = campaignItem.values[popFilterCID] as string;
+
+    if (popFilterValue === "") {
+      continue;
+    }
 
     //TODO: Check if sunday uses FFN or column title for the name
     const popFilterName = popFilter.values[ENV.INFRA.CIDS.FFN] as string;
-    const popFilterCID = popFilter.values[ENV.INFRA.CIDS.COLUMN_ID] as string;
     const popFilterColType = popFilter.values[
       ENV.INFRA.CIDS.COLUMN_TYPE
     ] as string;
 
-    const popFilterValue = campaignItem.values[popFilterCID] as string;
     populationFilters[popFilterName] = {
       value: popFilterValue,
       type: popFilterColType,
@@ -1107,11 +1114,13 @@ async function processConfigGroup(
   allRegulations: Regulation[]
 ): Promise<ValidationResult<ValidatedConfigItem[], ErrorObject>> {
   try {
+
     const configItems = await getConfigItems(
       configGroup,
       infraFFNtoCID,
       allRegulations
     );
+
     if (configItems.length !== 0) {
       const configErrors = validateConfigItems(configItems);
 
@@ -1237,13 +1246,27 @@ function generateRegulations(
 }
 
 async function getInfraBoard() {
-  //Get cached record first
+  //CACHE HIT
+  const infraBoard = await redisClient.get("board:infra");
+  if (infraBoard) {
+    const newBoard = Board.fromJSON(
+      mondayClient.clientOptions,
+      JSON.parse(infraBoard) as JSONBoard
+    );
+    return newBoard;
+  }
 
-  //else if cache miss, use monstaa
-  return mondayClient.getBoard(ENV.INFRA.BOARD_ID, {
+  //CACHE MISS
+  const infraBoardFromMonday = await mondayClient.getBoard(ENV.INFRA.BOARD_ID, {
     queryLevel: QueryLevel.Cell,
     subitemLevel: "none",
   });
+
+  if (infraBoardFromMonday) {
+    await redisClient.set("board:infra", infraBoardFromMonday.toJSON());
+  }
+
+  return infraBoardFromMonday;
 }
 
 async function processError(
@@ -1302,6 +1325,8 @@ async function importCampaign(webhook: MondayWebHook) {
     campaignPID = Number(webhook.event.pulseId);
     const campaignBID = Number(webhook.event.boardId);
 
+    const start = performance.now();
+
     const [infraBoard, campaignItem] = await Promise.all([
       getInfraBoard(),
       mondayClient.getItem(
@@ -1309,6 +1334,9 @@ async function importCampaign(webhook: MondayWebHook) {
         { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }
       ),
     ]);
+    const end = performance.now();
+    console.log("TIME", end - start);
+
 
     if (!infraBoard) {
       throw new Error(`Infra board not found.`);
@@ -1439,6 +1467,8 @@ async function importCampaign(webhook: MondayWebHook) {
       activeRegulations,
       actionFlags
     );
+
+    return result;
   } catch (err) {
     await processError(err, "Import Campaign", campaignPID);
   }

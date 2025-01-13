@@ -77,7 +77,7 @@ export const POPULATION_FILTER_TYPES = {
     "Filter_RoundBasedPoker",
   ],
   //TODO: Verify this
-  Last_Bet_Date: ["Filter_LastBetDate"],
+  Last_Bet_Date: ["Filter_LastBetDate", "Filter_SportLastBetDate"],
 };
 
 export const POPULATION_FILTERS = {
@@ -89,6 +89,8 @@ export const POPULATION_FILTERS = {
   Round_Based_Sport: "Filter_RoundBasedSport",
   Round_Based_Poker: "Filter_RoundBasedPoker",
   Cashback_Casino_Vendors: "Filter_CashbackCasinoVendors",
+  SportLastBetDate: "Filter_SportLastBetDate",
+  LastBetDate: "Filter_LastBetDate",
   Cashback_Casino_Games: "Filter_CashbackCasinoGames",
 };
 

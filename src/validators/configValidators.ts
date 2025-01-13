@@ -257,15 +257,7 @@ export function validateConfigGroup(
     );
   }
 
-  return errors.length
-    ? {
-        status: "fail",
-        data: errors,
-      }
-    : {
-        status: "success",
-        data: configItems,
-      };
+  return errors;
 }
 
 //There are a lot of code duplication here, this is a tradeoff introduced by
