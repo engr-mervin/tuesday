@@ -1114,7 +1114,6 @@ async function processConfigGroup(
   allRegulations: Regulation[]
 ): Promise<ValidationResult<ValidatedConfigItem[], ErrorObject>> {
   try {
-
     const configItems = await getConfigItems(
       configGroup,
       infraFFNtoCID,
@@ -1325,27 +1324,13 @@ async function importCampaign(webhook: MondayWebHook) {
     campaignPID = Number(webhook.event.pulseId);
     const campaignBID = Number(webhook.event.boardId);
 
-    const start = performance.now();
-
-    const [infraBoard, campaignItem] = await Promise.all([
-      getInfraBoard(),
-      mondayClient.getItem(
-        { itemId: campaignPID },
-        { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }
-      ),
-    ]);
-    const end = performance.now();
-    console.log("TIME", end - start);
-
+    const infraBoard = await getInfraBoard();
 
     if (!infraBoard) {
       throw new Error(`Infra board not found.`);
     }
-    if (!campaignItem) {
-      throw new Error(`Campaign item not found.`);
-    }
 
-    const infraItem = infraBoard.items!.find(
+    const infraItem = infraBoard.items.find(
       (item) =>
         Number(item.values![ENV.INFRA.ROOT_CIDS.CAMPAIGN_BOARD_ID]) ===
         campaignBID
@@ -1359,10 +1344,22 @@ async function importCampaign(webhook: MondayWebHook) {
       throw new Error(`Infra items not initialized.`);
     }
 
-    await infraItem.update({
-      queryLevel: QueryLevel.Cell,
-      subitemLevel: QueryLevel.Cell,
-    });
+    //Slight performance optimization, since infraboard is cache, it is fast, so
+    //getting campaign item is batched with another slow request - updating subitems of infra item
+    const [_, campaignItem] = await Promise.all([
+      infraItem.update({
+        queryLevel: QueryLevel.Cell,
+        subitemLevel: QueryLevel.Cell,
+      }),
+      mondayClient.getItem(
+        { itemId: campaignPID },
+        { queryLevel: QueryLevel.Cell, subitemLevel: QueryLevel.Cell }
+      ),
+    ]);
+
+    if (!campaignItem) {
+      throw new Error(`Campaign item not found.`);
+    }
 
     const infraFFNtoCID: Record<string, Record<string, string>> = {};
     const infraMapping: Record<string, Record<string, Item>> = {};
