@@ -26,3 +26,4 @@ export type FailedValidationResult<U = (ErrorObject | string)[]> = {
 };
 
 export type Time = { readonly __brand: unique symbol } & string;
+export type YYYYMMDDString = { readonly __brand: unique symbol } & string;

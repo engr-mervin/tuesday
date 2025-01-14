@@ -4,7 +4,7 @@ import {
   DropdownCellValue,
   NumberCellValue,
 } from "monstaa/dist/classes/Cell.js";
-import { Optional } from "./generalTypes.js";
+import { Optional, YYYYMMDDString } from "./generalTypes.js";
 
 export interface PopulationFilters {
   [key: string]: {
@@ -16,6 +16,7 @@ export interface PopulationFilters {
 //Validation will validate validity of values
 export interface CampaignFields {
   name: string;
+  itemId: number;
   startDate: string | null;
   endDate: string | null;
   ab: Optional<NumberCellValue>;
@@ -64,6 +65,7 @@ export interface ActionFlags {
 
 export interface ValidatedCampaignFields {
   name: string;
+  itemId: number;
   startDate: string;
   endDate: string;
   ab: Optional<number>;

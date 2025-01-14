@@ -3,6 +3,7 @@ import { Optional } from "./generalTypes.js";
 
 export interface RoundFields {
   name: string;
+  itemId: number;
   roundType: string;
   startDate: DateCellValue;
   endDate: DateCellValue;
@@ -15,6 +16,7 @@ export interface RoundFields {
 }
 export interface ValidatedRoundFields {
   name: string;
+  itemId: number;
   roundType: "Intro" | "Reminder 1" | "Reminder 2";
   startDate: string;
   endDate: DateCellValue;

@@ -28,6 +28,7 @@ import {
   ValidatedNonBonusOfferItem,
 } from "./types/offerTypes.js";
 import {
+  createCampaignObject,
   interValidation,
   validateCampaignItem,
   validatePopulationFilters,
@@ -281,6 +282,7 @@ function getRoundFields(
 
   return {
     name: roundItem.name,
+    itemId: roundItem.itemId,
     roundType,
     startDate,
     endDate,
@@ -505,6 +507,7 @@ async function getCampaignFields(
 
   return {
     name: campaignItem.name,
+    itemId: campaignItem.itemId,
     startDate,
     endDate,
     ab,
@@ -1344,6 +1347,7 @@ async function importCampaign(webhook: MondayWebHook) {
       throw new Error(`Infra items not initialized.`);
     }
 
+    //TODO: Add user id here
     //Slight performance optimization, since infraboard is cache, it is fast, so
     //getting campaign item is batched with another slow request - updating subitems of infra item
     const [_, campaignItem] = await Promise.all([
@@ -1455,7 +1459,7 @@ async function importCampaign(webhook: MondayWebHook) {
       return;
     }
 
-    const result = interValidation(
+    const interValidationResult = interValidation(
       campaignDetails.data,
       roundDetails.data,
       themeDetails.data,
@@ -1465,7 +1469,28 @@ async function importCampaign(webhook: MondayWebHook) {
       actionFlags
     );
 
-    return result;
+    if (interValidationResult.status !== "success") {
+      await processFail([interValidationResult], campaignPID);
+    }
+
+    //ADAPTOR FOR THE CURRENT STATE OF TYSON.. We're done with validation, only need
+    //to build the JSON object
+    const campaignJSON = createCampaignObject(
+      offerName,
+      themeName,
+      campaignDetails.data,
+      roundDetails.data,
+      themeDetails.data,
+      offerDetails.data,
+      configDetails.data,
+      allRegulations,
+      activeRegulations,
+      actionFlags
+    );
+
+    return {
+      status: "success",
+    };
   } catch (err) {
     await processError(err, "Import Campaign", campaignPID);
   }
