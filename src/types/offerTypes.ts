@@ -1,4 +1,4 @@
-import { OFFER_TYPES } from "../constants/infraConstants.js";
+import { OFFER_FIELD_NAMES, OFFER_TYPES } from "../constants/infraConstants.js";
 import { BaseParameter } from "./campaignTypes.js";
 export interface BonusOfferItem extends BaseParameter {
   useAsCom: boolean | undefined;
@@ -31,7 +31,7 @@ export type ValidatedOfferItem =
 export interface ValidatedBonusOfferItem extends BaseParameter {
   useAsCom: boolean | undefined;
   bonusType: (typeof OFFER_TYPES)[keyof typeof OFFER_TYPES];
-  bonusFieldName: string;
+  bonusFieldName: (typeof OFFER_FIELD_NAMES)[keyof typeof OFFER_FIELD_NAMES];
   isFragment: boolean;
 }
 export interface ValidatedNonBonusOfferItem extends BaseParameter {

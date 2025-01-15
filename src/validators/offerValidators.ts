@@ -1,10 +1,14 @@
-import { BONUS_TYPES, OFFER_TYPES } from "../constants/infraConstants.js";
+import {
+  BONUS_TYPES,
+  OFFER_FIELD_NAMES,
+  OFFER_TYPES,
+} from "../constants/infraConstants.js";
 import {
   isInteger,
   isIntegerInRange,
   isNumberInRange,
 } from "../helpers/validatorFunctions.js";
-import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
+import { ErrorObject } from "../types/generalTypes.js";
 import {
   BonusOfferItem,
   NonBonusOfferItem,
@@ -21,7 +25,7 @@ export const offerValidationRules: Record<
     offerItem: BonusOfferItem
   ) => null | string
 > = {
-  [OFFER_TYPES.External_Plan_ID]: (
+  [OFFER_FIELD_NAMES.External_Plan_ID]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -32,7 +36,7 @@ export const offerValidationRules: Record<
     return null;
   },
 
-  [OFFER_TYPES.Winning_Offering_Type]: (
+  [OFFER_FIELD_NAMES.Winning_Offering_Type]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -54,7 +58,7 @@ export const offerValidationRules: Record<
     return null;
   },
 
-  [OFFER_TYPES.Bonus_Offer_Type]: (
+  [OFFER_FIELD_NAMES.Bonus_Offer_Type]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -75,7 +79,7 @@ export const offerValidationRules: Record<
     return null;
   },
 
-  [OFFER_TYPES.Offer_Game_Group]: (
+  [OFFER_FIELD_NAMES.Offer_Game_Group]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -100,7 +104,7 @@ export const offerValidationRules: Record<
     return null;
   },
 
-  [OFFER_TYPES.Offer_Package_ID]: (
+  [OFFER_FIELD_NAMES.Offer_Package_ID]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -115,7 +119,7 @@ export const offerValidationRules: Record<
     return null;
   },
 
-  [OFFER_TYPES.Expiration_Date]: (
+  [OFFER_FIELD_NAMES.Expiration_Date]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -151,7 +155,7 @@ export const offerValidationRules: Record<
     return null;
   },
 
-  [OFFER_TYPES.Number_of_Tickets]: (
+  [OFFER_FIELD_NAMES.Number_of_Tickets]: (
     value: string | undefined,
     market: string,
     offerItem: BonusOfferItem
@@ -174,17 +178,20 @@ export const offerValidationRules: Record<
 };
 
 export function validateBonus(offerItem: BonusOfferItem): string[] {
-  const errors = [];
+  const errors: string[] = [];
+
+  //NOTE: Offer board supports the existence of both bonus offer and non bonus offer
+  //Non bonus offers are those with type 'Communication', we skip validation here.
+  if(offerItem.bonusType === "Communication"){
+    return []
+  }
+
+  //For the rest, bonusfield name should exist.
   if (offerItem.bonusFieldName === "") {
-    errors.push(`Bonus field name missing.`);
+    return [`Bonus field name is required.`];
   }
-  if (!Object.keys(OFFER_TYPES).includes(offerItem.bonusType)) {
-    errors.push(`Bonus type not supported or missing.`);
-  }
-  if (errors.length) {
-    return errors;
-  }
-  const validator = offerValidationRules[offerItem.bonusType];
+
+  const validator = offerValidationRules[offerItem.bonusFieldName] || (() => null);
   for (const market in offerItem.values) {
     const value = offerItem.values[market];
 
@@ -273,11 +280,11 @@ export function validateOfferSegments(
       segmentErrors.push(`Incomplete values in some bonuses.`);
     }
 
-    const gameGroupValue = bonuses[OFFER_TYPES.Offer_Game_Group];
+    const gameGroupValue = bonuses[OFFER_FIELD_NAMES.Offer_Game_Group];
     if (gameGroupValue !== undefined) {
       const offerTypeValue =
-        bonuses[OFFER_TYPES.Winning_Offering_Type] ||
-        bonuses[OFFER_TYPES.Bonus_Offer_Type];
+        bonuses[OFFER_FIELD_NAMES.Winning_Offering_Type] ||
+        bonuses[OFFER_FIELD_NAMES.Bonus_Offer_Type];
       if (offerTypeValue === undefined) {
         segmentErrors.push(`Offer type record is required.`);
       } else {

@@ -116,7 +116,7 @@ export const BONUS_TYPES = {
   FIM: "fim",
 };
 
-export const OFFER_TYPES = {
+export const OFFER_FIELD_NAMES = {
   Game_List: "Game List",
   Sport_Name: "Sport Name",
   Tournament_Name: "Tournament Name",
@@ -128,6 +128,44 @@ export const OFFER_TYPES = {
   Offer_Package_ID: "Offer Package ID",
   Expiration_Date: "Expiration Date",
   Number_of_Tickets: "Number of Tickets",
+} as const;
+
+export const OFFER_TYPES = {
+  Free_Bet_1: "Free Bet 1",
+  Free_Bet_2: "Free Bet 2",
+  Free_Bet_3: "Free Bet 3",
+  Free_Bet_4: "Free Bet 4",
+  Spectate_Free_Bet_1: "Spectate Free Bet 1",
+  Spectate_Free_Bet_2: "Spectate Free Bet 2",
+  Spectate_Free_Bet_3: "Spectate Free Bet 3",
+  Spectate_Free_Bet_4: "Spectate Free Bet 4",
+  TRT_1: "TRT 1",
+  TRT_2: "TRT 2",
+  TRT_3: "TRT 3",
+  TRT_4: "TRT 4",
+  IMM_Bonus: "IMM Bonus",
+  Free_Spin_Bonus: "Free Spin Bonus",
+  Third_Party_FPS: "3rd Party FPS",
+  Free_Play_Voucher: "Free Play Voucher",
+} as const;
+
+export const OFFER_TYPES_CONVERSION = {
+  "Free Bet 1": "fbt1",
+  "Free Bet 2": "fbt2",
+  "Free Bet 3": "fbt3",
+  "Free Bet 4": "fbt4",
+  "Spectate Free Bet 1": "sfb1",
+  "Spectate Free Bet 2": "sfb2",
+  "Spectate Free Bet 3": "sfb3",
+  "Spectate Free Bet 4": "sfb4",
+  "TRT 1": "trt1",
+  "TRT 2": "trt2",
+  "TRT 3": "trt3",
+  "TRT 4": "trt4",
+  "IMM Bonus": "fim",
+  "Free Spin Bonus": "fps",
+  "3rd Party FPS": "3rdfps",
+  "Free Play Voucher": "fpv",
 } as const;
 
 export const COMPLEX_OFFER_TYPES = {

@@ -1265,7 +1265,7 @@ async function getInfraBoard() {
   });
 
   if (infraBoardFromMonday) {
-    await redisClient.set("board:infra", infraBoardFromMonday.toJSON());
+    await redisClient.set("board:infra", infraBoardFromMonday.toJSON(), { EX: 3600 });
   }
 
   return infraBoardFromMonday;

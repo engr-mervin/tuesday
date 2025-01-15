@@ -13,12 +13,9 @@ import {
   addDays,
   getToday,
   stringYYYYMMDDToDate,
-  stringDDMMYYYYToDate,
-  dateToYYYYMMDDString,
 } from "../helpers/dateFunctions.js";
 import {
   isCommaSeparatedList,
-  isCommaSeparatedListOfIntegers,
   isInteger,
   isIntegerInRange,
   isValidInvertedStringRange,
@@ -36,14 +33,11 @@ import {
 import { ValidatedConfigItem } from "../types/configTypes.js";
 import { ErrorObject, ValidationResult } from "../types/generalTypes.js";
 import {
-  BonusOfferItem,
-  NonBonusOfferItem,
   ValidatedBonusOfferItem,
   ValidatedNonBonusOfferItem,
 } from "../types/offerTypes.js";
 import { ValidatedRoundFields } from "../types/roundTypes.js";
 import { ThemeParameter } from "../types/themeTypes.js";
-import { Details, DetailsData, Parameter, Round } from "../types/tysonTypes.js";
 
 function validatePromocodeParameters(
   parameters: BaseParameter[],
@@ -98,154 +92,6 @@ function validatePromocodeParameters(
       };
 }
 
-function buildParameters(
-  roundType: string,
-  offerParams: BonusOfferItem[] | NonBonusOfferItem[],
-  themeParams: ThemeParameter[],
-  allRegulations: Regulation[],
-  actionFlags: ActionFlags,
-  campStartDate: string,
-  campEndDate: string
-): Parameter[] {
-  const params: Parameter[] = [];
-  const regSegNums: Record<string, string> = {};
-
-  for (let i = 0; i < allRegulations.length; i++) {
-    const regulation = allRegulations[i];
-    regSegNums[regulation.name] = `Segment Name${i + 1}`;
-  }
-
-  const headerParam: Parameter = {
-    "Param Name": "AAAAA",
-    "Param Type": "PRM_Type",
-  };
-  for (const regulation of allRegulations) {
-    headerParam[regSegNums[regulation.name]] = regulation.name;
-  }
-
-  params.push(headerParam);
-
-  for (const offerParam of offerParams) {
-    if (offerParam.useAsCom) {
-      const param: Parameter = {
-        "Param Name": offerParam.parameterName,
-        "Param Type": offerParam.parameterType,
-      };
-
-      for (const regulation of allRegulations) {
-        param[regSegNums[regulation.name]] =
-          offerParam.values[regulation.name] || null;
-      }
-      params.push(param);
-    }
-  }
-
-  for (const themeParam of themeParams) {
-    if (themeParam.communicationType === roundType) {
-      const param: Parameter = {
-        "Param Name": themeParam.parameterName,
-        "Param Type": themeParam.parameterType,
-      };
-
-      for (const regulation of allRegulations) {
-        param[regSegNums[regulation.name]] =
-          themeParam.values[regulation.name] || null;
-      }
-
-      params.push(param);
-    }
-  }
-
-  if (!actionFlags.Exclude_Default_Parameters) {
-    const startParam: Parameter = {
-      "Param Name": "PromotionStartDate",
-      "Param Type": "Date (YYYY-MM-DD)",
-    };
-
-    const endParam: Parameter = {
-      "Param Name": "PromotionEndDate",
-      "Param Type": "Date (YYYY-MM-DD)",
-    };
-
-    for (const regulation of allRegulations) {
-      startParam[regSegNums[regulation.name]] = campStartDate;
-      endParam[regSegNums[regulation.name]] = campEndDate;
-    }
-
-    params.push(startParam);
-    params.push(endParam);
-  }
-
-  return params;
-}
-export function createCampaignObject(
-  offerName: string,
-  themeName: string,
-  campaignFields: ValidatedCampaignFields,
-  roundFields: ValidatedRoundFields[],
-  themeItems: ThemeParameter[],
-  offerItems: ValidatedBonusOfferItem[] | ValidatedNonBonusOfferItem[],
-  configItems: ValidatedConfigItem[],
-  allRegulations: Regulation[],
-  activeRegulations: Regulation[],
-  actionFlags: ActionFlags
-): DetailsData {
-  const startDate = stringYYYYMMDDToDate(campaignFields.startDate) as Date;
-  const startDateAdjusted = addDays(startDate, -1);
-  const startDateString = dateToYYYYMMDDString(startDateAdjusted);
-
-  const details: Details = {
-    id: String(campaignFields.itemId),
-    name: campaignFields.name,
-    offer: offerName,
-    theme: themeName,
-    startDate: startDateString,
-    endDate: campaignFields.endDate,
-    status: campaignFields.status,
-    ab: campaignFields.ab ?? null,
-    controlGroup: String(campaignFields.controlGroup) ?? null,
-    regulations: allRegulations,
-    isOneTimeCampaign: campaignFields.isOneTime,
-    tiers: {
-      isRequired: campaignFields.tiers !== undefined,
-      values: campaignFields.tiers ?? [],
-      isValid:
-        campaignFields.tiers !== undefined && campaignFields.tiers.length > 0,
-    },
-    personEmail: campaignFields.user.email,
-  };
-
-  const rounds: Round[] = [];
-  for (const roundItem of roundFields) {
-    const roundStartDate = stringYYYYMMDDToDate(
-      roundItem.roundType === "Intro"
-        ? campaignFields.startDate
-        : roundItem.startDate
-    ) as Date;
-    const roundStartDateAdjusted = addDays(roundStartDate, -1);
-    const roundStartDateString = dateToYYYYMMDDString(roundStartDateAdjusted);
-    const round: Round = {
-      itemId: String(roundItem.itemId),
-      name: roundItem.name,
-      type: roundItem.roundType,
-      startDate: roundStartDateString,
-      endDate:
-        campaignFields.isOneTime || roundItem.isOneTime
-          ? roundStartDateString
-          : (roundItem.endDate as string),
-      isOneTimeRound: roundItem.isOneTime ?? false,
-      parameters: buildParameters(
-        roundItem.roundType,
-        offerItems,
-        themeItems,
-        allRegulations,
-        actionFlags,
-        campaignFields.startDate,
-        campaignFields.endDate
-      )
-    };
-  }
-}
 
 export function interValidation(
   campaignFields: ValidatedCampaignFields,

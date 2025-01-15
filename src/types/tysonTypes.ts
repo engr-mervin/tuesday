@@ -1,3 +1,8 @@
+import {
+  OFFER_TYPES,
+  OFFER_TYPES_CONVERSION,
+} from "../constants/infraConstants";
+
 export interface PromotionPage {
   meta: Record<MetaField, string>;
   config: Record<ConfigField, string>;
@@ -101,7 +106,7 @@ export interface CampaignDetailsResponse {
 
 export interface DetailsData {
   details: Details;
-  rounds: Round[];
+  rounds: RoundObject[];
   closedPopulation: ClosedPopulation;
   promotionPage: PromotionPage;
 }
@@ -137,7 +142,7 @@ export interface Filter {
   value: string;
 }
 
-export interface Round {
+export interface RoundObject {
   itemId: string;
   name: string;
   type: string;
@@ -145,22 +150,35 @@ export interface Round {
   endDate: string;
   parameters: Parameter[]; // This may change due to monday infra offer repo per campaign so no strict type
   isOneTimeRound: boolean;
-  bonuses: Bonuses;
-  populationFilters: Filter[];
+  bonuses: Bonuses | null;
+  populationFilters: Filter[] | null;
   communications: Communications | null;
 }
 
-interface Parameter {
+export interface Parameter {
+  "Param Name": string;
+  "Param Type": string;
   [key: string]: string | null;
 }
 
-interface Bonuses {
+export interface Bonuses {
   bonusesCnt: number;
-  list: any[];
+  list: Bonus[];
   validation: {
     hasError: boolean;
-    message: any[];
+    message: string[];
   };
+}
+
+export interface Bonus {
+  type: (typeof OFFER_TYPES_CONVERSION)[keyof typeof OFFER_TYPES_CONVERSION];
+  name: keyof typeof OFFER_TYPES_CONVERSION;
+  segments: BonusSegment[];
+}
+
+export interface BonusSegment {
+  segmentName: string;
+  bonusValues: { [key in keyof typeof OFFER_TYPES]: string | string[] };
 }
 
 interface SegmentFilters {
