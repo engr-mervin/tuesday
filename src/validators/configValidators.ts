@@ -54,7 +54,7 @@ export function validateConfigItems(configItems: ConfigItem[]): ErrorObject[] {
 
     const allowedTypes = Object.values(CONFIGURATION_TYPES);
 
-    if (!allowedTypes.includes(configItem.type)) {
+    if (!(configItem.type in allowedTypes)) {
       errors.push({
         name: configItem.name,
         errors: [`Configuration Type is either missing or not supported`],
@@ -142,7 +142,7 @@ export function validateConfigGroup(
     CONFIGURATION_TYPES.Promotion_Meta,
   ];
   for (const configItem of configItems) {
-    if (uniqueConfigs.includes(configItem.type)) {
+    if (configItem.type in uniqueConfigs) {
       if (configSet.has(configItem.type)) {
         errors.push(`${configItem.type} should only have one record.`);
       }
@@ -164,7 +164,7 @@ export function validateConfigGroup(
 
   for (const configItem of configItems) {
     const uniqueIdentifier = `${configItem.type}___${configItem.name}`;
-    if (uniqueNameConfigs.includes(configItem.type)) {
+    if (configItem.type in uniqueNameConfigs) {
       if (configNameSet.has(uniqueIdentifier)) {
         errors.push(
           `Two or more ${configItem.type} records have the same name: ${configItem.name}.`
@@ -192,7 +192,7 @@ export function validateConfigGroup(
 
   for (const configItem of configItems) {
     const uniqueIdentifier = `${configItem.round}__${configItem.type}___${configItem.fieldName}`;
-    if (uniqueFieldConfigs.includes(configItem.type)) {
+    if (configItem.type in uniqueFieldConfigs) {
       if (configFieldSet.has(uniqueIdentifier)) {
         errors.push(
           `Two or more ${configItem.type} records have the same field name: ${configItem.fieldName}.`

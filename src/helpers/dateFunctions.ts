@@ -28,7 +28,7 @@ export function dateToYYYYMMDDString(date: Date): string {
 export function stringYYYYMMDDToDate(
   inp: string,
   sep: string = "-"
-):  Date | null {
+): Date | null {
   const dateArray = inp.split(sep);
   if (dateArray.length !== 3) {
     return null as any;
@@ -52,6 +52,13 @@ export function stringYYYYMMDDToDate(
   }
 
   return date;
+}
+
+export function timeObjectToString(time: { hour: string; minute: string }) {
+  return `${time.hour.padStart(2, "0")}:${time.minute.padStart(
+    2,
+    "0"
+  )}`;
 }
 
 export function timeStringToMinutes(inp: Time) {

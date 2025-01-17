@@ -8,6 +8,8 @@ export interface ErrorObject {
 //syntax, then adding those fields to the object will result in more cluttered code:
 //e.g. if(field){obj[field] = value}, as compared to just declaring the whole object in one place.
 export type Optional<T> = T | undefined;
+export type ValuesOf<T extends Record<string, unknown>> = (T)[keyof T];
+export type KeysOf<T extends Record<string, unknown>> = keyof T;
 
 export type ValidationResult<T = undefined, U = (ErrorObject | string)[]> =
   | (T extends undefined

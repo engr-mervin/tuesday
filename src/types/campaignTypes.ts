@@ -1,10 +1,10 @@
 import { User } from "monstaa/dist/classes/User.js";
-import { CAMPAIGN_STATUSES } from "../constants/infraConstants.js";
+import { CAMPAIGN_STATUSES, POPULATION_FILTERS } from "../constants/infraConstants.js";
 import {
   DropdownCellValue,
   NumberCellValue,
 } from "monstaa/dist/classes/Cell.js";
-import { Optional, YYYYMMDDString } from "./generalTypes.js";
+import { Optional } from "./generalTypes.js";
 
 export interface PopulationFilters {
   [key: string]: {
@@ -12,6 +12,17 @@ export interface PopulationFilters {
     type: string;
   };
 }
+
+export interface ClosedPopulation {
+  type: string | undefined;
+  files:
+    | {
+        assetId: number;
+        name: string;
+      }[]
+    | undefined;
+};
+
 //Get fields will validate existence,
 //Validation will validate validity of values
 export interface CampaignFields {
@@ -29,15 +40,7 @@ export interface CampaignFields {
   offer: string;
   isOneTime: Optional<boolean>;
   populationFilters: PopulationFilters;
-  closedPopulation: {
-    type: string | undefined;
-    files:
-      | {
-          assetId: number;
-          name: string;
-        }[]
-      | undefined;
-  };
+  closedPopulation: ClosedPopulation;
 }
 
 export type BaseParameter = {
@@ -77,11 +80,16 @@ export interface ValidatedCampaignFields {
   theme: string;
   offer: string;
   isOneTime: Optional<boolean>;
-  populationFilters: Record<
-    string,
-    {
-      value: string;
-      type: string;
-    }
-  >;
+  populationFilters: ValidatedPopulationFilters;
+  closedPopulation: ClosedPopulation;
 }
+
+
+//Apparently dynamic keys is not available in interface
+export type ValidatedPopulationFilters = {
+  [filterType in (keyof typeof POPULATION_FILTERS)]?: {
+    value: string;
+    type: string;
+  };
+}
+

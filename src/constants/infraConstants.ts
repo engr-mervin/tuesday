@@ -78,21 +78,21 @@ export const POPULATION_FILTER_TYPES = {
   ],
   //TODO: Verify this
   Last_Bet_Date: ["Filter_LastBetDate", "Filter_SportLastBetDate"],
-};
+} as const;
 
 export const POPULATION_FILTERS = {
   Sport_Type_Name: "Filter_SportTypeName",
   UP48_Game_Survey: "Filter_UP48GameSurvey",
   UP48_Season_Start: "Filter_UP48SeasonStart",
-  Event_Level_l2: "Filter_EventLevel2",
+  Event_Level_2: "Filter_EventLevel2",
   Round_Based_Casino: "Filter_RoundBasedCasino",
   Round_Based_Sport: "Filter_RoundBasedSport",
   Round_Based_Poker: "Filter_RoundBasedPoker",
   Cashback_Casino_Vendors: "Filter_CashbackCasinoVendors",
+  Cashback_Casino_Games: "Filter_CashbackCasinoGames",
   SportLastBetDate: "Filter_SportLastBetDate",
   LastBetDate: "Filter_LastBetDate",
-  Cashback_Casino_Games: "Filter_CashbackCasinoGames",
-};
+} as const;
 
 export const LIMITS = {
   Max_Param_Length: 199,
@@ -261,6 +261,42 @@ export const REQUIRED_PROMO_IMAGE_CLASSIFICATIONS = [
 export const REQUIRED_PROMO_TEXT_CLASSIFICATIONS = ["Text"];
 export const REQUIRED_PROMO_CTA_CLASSIFICATIONS = ["Label"];
 
+export const CONFIGURATION_TYPES_CONVERSION = {
+  "Promocode Config": "promocodeConfig",
+  "Neptune Config": "neptuneConfig",
+  "Pacman Config": "pacmanConfig",
+  "Neptune Bind": "neptuneBind",
+  Banner: "banner",
+  Omg: "omg",
+  Email: "email",
+  SMS: "sms",
+  Push: "push",
+  Neptune: "neptune",
+  "Neptune Opt-In": "neptuneOptIn",
+  "Remove Neptune": "removeNeptune",
+  "Segment Filter": "segmentFilter",
+} as const;
+
+export const CONFIGURATION_TYPES_FIELD_NAMES = {
+  Banner: [
+    "banner_casinoId",
+    "banner_pokerId",
+    "banner_sportId",
+    "banner_777Id",
+    "banner_durationStartDay",
+    "banner_scheduleStartHour",
+    "banner_durationEndDay",
+    "banner_scheduleEndHour",
+  ],
+  Omg: ["omg_scheduleHour", "omg_templateId"],
+  Email: ["email_scheduleHour", "email_templateId"],
+  SMS: ["sms_scheduleHour", "sms_templateId"],
+  Push: ["push_scheduleHour", "push_templateId"],
+  Neptune: ["neptune_id"],
+  "Neptune Opt-In": ["neptuneOptin_id"],
+  "Remove Neptune": ["removeNeptune_id"],
+} as const;
+
 export const CONFIGURATION_TYPES = {
   Promocode_Config: "Promocode Config",
   Neptune_Config: "Neptune Config",
@@ -285,13 +321,37 @@ export const CONFIGURATION_TYPES = {
   Neptune: "Neptune",
   Neptune_Opt_In: "Neptune Opt-In",
   Remove_Neptune: "Remove Neptune",
-};
+} as const;
 
 export const FIELDS_BANNER = {
   Banner_Schedule_End_Hour: "banner_scheduleEndHour",
   Banner_Schedule_Start_Hour: "banner_scheduleStartHour",
   Banner_Duration_Start_Day: "banner_durationStartDay",
   Banner_Duration_End_Day: "banner_durationEndDay",
+};
+
+export const CLASSIFICATION_TO_FIELD_ID = {
+  "Mobile Image": "imageLinkMobileReference",
+  "Desktop Image": "imageLinkDesktopReference",
+  Text: "text",
+  Label: "label",
+  "CTA Script": "ctaScript",
+  Description: "description",
+  Title: "title",
+  URL: "url",
+  Type: "type",
+};
+export const META_CLASSIFICATION_TO_FIELD_ID = {
+  Description: "og:description",
+  Title: "og:title",
+  URL: "og:url",
+  Type: "og:type",
+};
+export const CONFIG_CLASSIFICATION_TO_FIELD_ID = {
+  "Segment Inject": "segmentInject",
+  Name: "name",
+  "Template Name": "templateName",
+  URL: "url",
 };
 
 export const FIELDS_EMAIL = {
@@ -302,7 +362,7 @@ export const FIELDS_EMAIL = {
 export const FIELDS_OMG = {
   OMG_Template_ID: "omg_templateId",
   OMG_Schedule_Hour: "omg_scheduleHour",
-};
+} as const;
 export const FIELDS_PUSH = {
   Push_Template_ID: "push_templateId",
   Push_Schedule_Hour: "push_scheduleHour",
@@ -383,6 +443,20 @@ export const FIELDS_PACMAN_CONFIG = {
   OMG_Parameter: "omgParams",
   Company: "company",
 };
+
+export const PROMOTION_PAGE_VALUE_SOURCE = {
+  imageLinkMobileReference: "file",
+  imageLinkDesktopReference: "file",
+  text: "file-first",
+};
+
+export const PROMOTION_PAGE_TYPES = {
+  "Promotion Image": "image",
+  "Promotion CTA": "cta",
+  "Promotion Text": "text",
+  "Promotion Meta": "meta",
+  "Promotion Config": "config",
+}
 
 export const ALL_CONFIG_CLASSIFICATIONS = {
   Email_Parameter: "Email Parameter",

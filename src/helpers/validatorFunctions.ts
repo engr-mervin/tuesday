@@ -1,5 +1,5 @@
 import { BANNER_REGEX } from "../constants/regexConstants.js";
-import { stringToDateDDMMYYYY } from "./dateFunctions.js";
+import { stringDDMMYYYYToDate } from "./dateFunctions.js";
 
 //Will return true for empty strings
 export function isInteger(number: string | number | null): number is number {
@@ -58,7 +58,7 @@ export function isValidStringDateRange(
   if (strs.length !== 2) {
     return false;
   }
-  const [min, max] = strs.map((inp) => stringToDateDDMMYYYY(inp, sep2));
+  const [min, max] = strs.map((inp) => stringDDMMYYYYToDate(inp, sep2));
 
   if (!min || !max) {
     return false;

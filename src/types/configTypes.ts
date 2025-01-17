@@ -39,8 +39,8 @@ export interface ConfigSegments {
 
 export interface ValidatedConfigItem {
   name: string;
-  round: Round;
-  type: keyof typeof CONFIGURATION_TYPES;
+  round: Round | 'Promotion Page';
+  type: (typeof CONFIGURATION_TYPES)[keyof typeof CONFIGURATION_TYPES];
   fieldName: string;
   segments: Record<string, string>;
   //Optional for record with no subitems

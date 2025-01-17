@@ -92,7 +92,6 @@ function validatePromocodeParameters(
       };
 }
 
-
 export function interValidation(
   campaignFields: ValidatedCampaignFields,
   roundFields: ValidatedRoundFields[],
@@ -288,21 +287,21 @@ export function validatePopulationFilters(
 
   for (const popFilterKey in popFilters) {
     const popFilter = popFilters[popFilterKey];
-    if (!Object.values(POPULATION_FILTERS).includes(popFilterKey)) {
+    if (!(popFilterKey in Object.values(POPULATION_FILTERS))) {
       errors.push(`
         ${popFilterKey} is not a supported Population Filter.
         `);
       continue;
     }
 
-    if (POPULATION_FILTER_TYPES.Round_Based.includes(popFilterKey)) {
+    if (popFilterKey in POPULATION_FILTER_TYPES.Round_Based) {
       const isValidRange = isValidStringRange(popFilter.value);
       if (!isValidRange) {
         errors.push(`${popFilterKey} is not a valid range.`);
       }
     }
 
-    if (POPULATION_FILTER_TYPES.Last_Bet_Date.includes(popFilterKey)) {
+    if (popFilterKey in POPULATION_FILTER_TYPES.Last_Bet_Date) {
       //Last bet date is either MAX-MIN or Date1-Date2
       const isValidInvertedRange = isValidInvertedStringRange(
         popFilter.value,

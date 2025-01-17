@@ -46,7 +46,7 @@ export const offerValidationRules: Record<
     }
     if (isNumberInRange(value, 0)) {
       return `Value must be a positive integer or -1`;
-    }
+  }
 
     if (
       offerItem.bonusType &&

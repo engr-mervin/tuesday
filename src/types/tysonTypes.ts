@@ -1,6 +1,7 @@
 import {
   OFFER_TYPES,
   OFFER_TYPES_CONVERSION,
+  POPULATION_FILTERS,
 } from "../constants/infraConstants";
 
 export interface PromotionPage {
@@ -108,7 +109,7 @@ export interface DetailsData {
   details: Details;
   rounds: RoundObject[];
   closedPopulation: ClosedPopulation;
-  promotionPage: PromotionPage;
+  promotionPage: PromotionPage | null;
 }
 
 export interface Details {
@@ -138,8 +139,9 @@ interface Regulation {
 }
 
 export interface Filter {
-  name: string;
+  name: (typeof POPULATION_FILTERS)[keyof typeof POPULATION_FILTERS];
   value: string;
+  type: string;
 }
 
 export interface RoundObject {
@@ -187,13 +189,13 @@ interface SegmentFilters {
 }
 
 export interface Communications {
-  omg: Communication<OMGComm>;
-  email: Communication<EmailComm>;
-  sms: Communication<SMSComm>;
-  push: Communication<PushComm>;
-  neptune: Communication<NeptuneComm>;
-  neptuneOptIn: Communication<NeptuneOptInComm>;
-  removeNeptune: Communication<RemoveNeptuneComm>;
+  omg?: Communication<OMGComm>;
+  email?: Communication<EmailComm>;
+  sms?: Communication<SMSComm>;
+  push?: Communication<PushComm>;
+  neptune?: Communication<NeptuneComm>;
+  neptuneOptIn?: Communication<NeptuneOptInComm>;
+  removeNeptune?: Communication<RemoveNeptuneComm>;
   segmentFilter?: Record<string, SegmentFilters>;
   banner?: Communication<BannerComm>;
 
@@ -218,7 +220,7 @@ export interface NeptuneDetails {
   [key: string]: NestedCommField<NeptuneFields>[];
 }
 
-type NeptuneFields =
+export type NeptuneFields =
   | "campaignTemplate"
   | "ruleTemplate"
   | "intoNeptune"
@@ -243,7 +245,7 @@ type NeptuneFields =
   | "neptuneDuration"
   | "filter_numberOfLegs";
 
-type NeptunePacmanFields =
+export type NeptunePacmanFields =
   | "promoTemplates"
   | "promoDescription"
   | "bonusDesc"
@@ -285,8 +287,8 @@ interface SMSComm {
   sms_templateId: CommValue;
 }
 interface PushComm {
-  omg_scheduleHour: CommValue;
-  omg_templateId: CommValue;
+  push_scheduleHour: CommValue;
+  push_templateId: CommValue;
 }
 
 interface NeptuneComm {
@@ -324,7 +326,7 @@ interface NestedCommField<T> {
   name: string;
   fieldKey: T | null;
   value: string;
-  interfaceification: string;
+  classification: string;
 }
 export interface ParamObj {
   [key: string]: CommunicationParam[];
